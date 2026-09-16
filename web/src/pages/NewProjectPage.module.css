@@ -62,7 +62,9 @@
 
 .saveRow {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: var(--space-2);
   margin-top: var(--space-2);
 }
 
@@ -87,12 +89,88 @@
   align-items: center;
 }
 
-/* 整书大纲 ③：每卷一个视觉分组（卷头 + 卷级字段 + 卷内章节） */
-.volumeBlock {
-  padding: var(--space-3);
-  margin: var(--space-4) 0;
-  border: 1px solid var(--ink-border, rgba(128, 128, 128, 0.35));
-  border-radius: 8px;
+.outlineStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.volumeFold,
+.stageFold {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 252, 0.92);
+}
+
+.stageFold {
+  background: rgba(248, 246, 240, 0.7);
+}
+
+.foldSummary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 14px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.foldSummary::-webkit-details-marker {
+  display: none;
+}
+
+.foldSummary::before {
+  content: "▸";
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+}
+
+.volumeFold[open] > .foldSummary::before,
+.stageFold[open] > .foldSummary::before {
+  content: "▾";
+}
+
+.foldTitle {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.foldMeta {
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.foldBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 16px 16px;
+}
+
+.rangeRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.stageHead {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.stageHead .field {
+  flex: 1;
+}
+
+.growArea {
+  min-height: 5.5rem;
+  resize: vertical;
 }
 
 .charGrid {

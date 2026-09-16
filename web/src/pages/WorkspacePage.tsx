@@ -16,8 +16,9 @@ import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { clearActiveWrite, readActiveWrite, writeActiveWrite } from '../lib/activeWrite'
 import { liveStageNode } from '../lib/taskFlow'
-import { chapterToOpenForPendingTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
+import { chapterToOpenForPendingTask, latestActiveGenerationTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
 import type { ChapterMeta, MemoryCandidate, Project, WritingMode } from '../types'
 import styles from './WorkspacePage.module.css'
 
@@ -47,11 +48,13 @@ export default function WorkspacePage() {
   const [centerView, setCenterView] = useState<'plan' | 'write'>('write')
   const taskStartVersion = useRef(0)
   const chapterMaterializeVersion = useRef(0)
+  const projectIdRef = useRef(projectId)
   const activeTaskIdRef = useRef<string | null>(null)
   const selectedCidRef = useRef<string | null>(null)
   const selectedChapterSeqRef = useRef<number | null>(null)
   const latestPlanArtifactRef = useRef<string | null>(null)
   const latestWriteArtifactRef = useRef<string | null>(null)
+  projectIdRef.current = projectId
   // 只允许本页刚发起/续跑的任务在终态时自动跳章一次。历史任务恢复为 terminal 后
   // 不能持续把用户从其他章节拉回待确认章。
   const pendingAutoOpen = useRef<{ taskId: string; chapterSeq: number | null } | null>(null)
@@ -68,21 +71,29 @@ export default function WorkspacePage() {
     selectedChapterSeqRef.current = selected?.chapter_seq ?? null
     // 临时章节 id 被数据库真实 id 替换时仍是同一章，不能把正在展示的 Plan 翻回空正文。
     if (!changedChapter) return
-    setCenterView(selected?.status === 'planning' ? 'plan' : 'write')
+    // 规划/写作中先回 Plan；Write 产物经 SSE 回放到达后再翻正文，避免切回来只看到空正文。
+    setCenterView(selected?.status === 'planning' || selected?.status === 'writing' ? 'plan' : 'write')
     latestPlanArtifactRef.current = null
     latestWriteArtifactRef.current = null
   }, [chapters, selectedCid])
 
-  // 候选池加载失败静默降级（空列表），不阻塞主链路
+  // 候选池加载失败静默降级（空列表），不阻塞主链路。切书后丢弃上一本迟到的响应。
   const loadCandidates = useCallback(() => {
-    api.listCandidates(projectId, '').then(setCandidates).catch(() => setCandidates([]))
+    const pid = projectId
+    api.listCandidates(pid, '').then((list) => {
+      if (projectIdRef.current === pid) setCandidates(list)
+    }).catch(() => {
+      if (projectIdRef.current === pid) setCandidates([])
+    })
   }, [projectId])
 
   const loadCandidateReferences = useCallback(async () => {
+    const pid = projectId
     const [graphResult, foreshadowResult] = await Promise.allSettled([
-      api.listGraph(projectId),
-      api.listForeshadows(projectId),
+      api.listGraph(pid),
+      api.listForeshadows(pid),
     ])
+    if (projectIdRef.current !== pid) return
     const names: Record<string, string> = {}
     if (graphResult.status === 'fulfilled') {
       for (const node of graphResult.value.nodes) names[node.id] = node.name
@@ -109,20 +120,32 @@ export default function WorkspacePage() {
   }, [])
 
   const loadChapters = useCallback(async () => {
+    const pid = projectId
     setError(null) // 新一次加载先清陈旧错误横幅
     try {
-      const list = await api.listChapters(projectId)
-      setChapters(list)
+      const list = await api.listChapters(pid)
+      if (projectIdRef.current !== pid) return []
+      setChapters((current) => {
+        const pending = current.filter((chapter) => (
+          chapter.id.startsWith('pending-chapter:')
+          && !list.some((item) => item.chapter_seq === chapter.chapter_seq)
+        ))
+        return [...list, ...pending].sort((a, b) => a.chapter_seq - b.chapter_seq)
+      })
       return list
     } catch (err) {
+      if (projectIdRef.current !== pid) return []
       setError(formatApiError(err, '章节加载失败'))
       return []
     }
   }, [projectId])
 
   useEffect(() => {
-    // projectId 变化 = 切书：清空上一本的选择/任务/批次上下文 + 重载候选池
+    // projectId 变化 = 切书：立刻丢掉上一本的章节/任务，避免迟到响应把 A 书画到 B 书上。
     setSelectedCid(null)
+    setChapters([])
+    setCandidates([])
+    setCandidateReferenceNames({})
     setActiveTaskId(null)
     setBatchTotal(null)
     setActiveChapterSeq(null)
@@ -137,13 +160,110 @@ export default function WorkspacePage() {
     pendingAutoOpen.current = null
     setError(null)
     loadProjects()
-    void loadChapters()
+    const pid = projectId
+    const saved = readActiveWrite(pid)
+    if (saved) {
+      // worker 接手前库里还没有 Task/章节。切回来必须先用本页记下的 taskId 接 SSE。
+      const optimisticId = `pending-chapter:${saved.taskId}:${saved.chapterSeq}`
+      const optimisticChapter: ChapterMeta = {
+        id: optimisticId,
+        chapter_seq: saved.chapterSeq,
+        title: null,
+        status: 'planning',
+        word_count: 0,
+        summary: null,
+      }
+      pendingAutoOpen.current = { taskId: saved.taskId, chapterSeq: saved.chapterSeq }
+      // 同一次提交里 selectedSeq 仍是 null，后面的按章 listTasks effect 会先清 taskId。
+      // ref / version 立刻对齐，避免空列表把刚恢复的写作盖掉。
+      taskStartVersion.current += 1
+      activeTaskIdRef.current = saved.taskId
+      setActiveTaskId(saved.taskId)
+      setBatchTotal(saved.batchTotal)
+      setActiveChapterSeq(saved.chapterSeq)
+      setCenterView('plan')
+      setChapters([optimisticChapter])
+      setSelectedCid(optimisticId)
+      const materializeVersion = ++chapterMaterializeVersion.current
+      void (async () => {
+        for (let attempt = 0; attempt < 40; attempt += 1) {
+          if (materializeVersion !== chapterMaterializeVersion.current) return
+          try {
+            const latest = await api.listChapters(pid)
+            if (projectIdRef.current !== pid) return
+            const target = latest.find((chapter) => chapter.chapter_seq === saved.chapterSeq)
+            if (target) {
+              setChapters(latest)
+              setSelectedCid((current) => current === optimisticId ? target.id : current)
+              return
+            }
+            setChapters((current) => {
+              const pending = current.filter((chapter) => (
+                chapter.id.startsWith('pending-chapter:')
+                && !latest.some((item) => item.chapter_seq === chapter.chapter_seq)
+              ))
+              return [...latest, ...pending].sort((a, b) => a.chapter_seq - b.chapter_seq)
+            })
+          } catch {
+            // 占位章仍由 SSE/终态刷新接管。
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 250))
+        }
+      })()
+    }
+    void loadChapters().then(async (list) => {
+      if (projectIdRef.current !== pid) return
+      if (saved) {
+        const real = list.find((chapter) => chapter.chapter_seq === saved.chapterSeq)
+        if (real) setSelectedCid(real.id)
+        return
+      }
+      const inProgress = latestChapterAwaitingReview(list)
+      if (inProgress) {
+        setSelectedCid(inProgress.id)
+        return
+      }
+      try {
+        const tasks = await api.listTasks(pid)
+        if (projectIdRef.current !== pid) return
+        const active = latestActiveGenerationTask(tasks)
+        const seq = active?.chapter_seq
+        if (!active || !seq) return
+        const existing = list.find((chapter) => chapter.chapter_seq === seq)
+        if (existing) {
+          setSelectedCid(existing.id)
+          return
+        }
+        const optimisticId = `pending-chapter:${active.task_id}:${seq}`
+        const optimisticChapter: ChapterMeta = {
+          id: optimisticId,
+          chapter_seq: seq,
+          title: null,
+          status: active.status === 'awaiting_plan' || active.status === 'queued' ? 'planning' : 'writing',
+          word_count: 0,
+          summary: null,
+        }
+        setChapters((current) => (
+          current.some((chapter) => chapter.chapter_seq === seq)
+            ? current
+            : [...current, optimisticChapter].sort((a, b) => a.chapter_seq - b.chapter_seq)
+        ))
+        pendingAutoOpen.current = { taskId: active.task_id, chapterSeq: seq }
+        setActiveTaskId(active.task_id)
+        setBatchTotal(active.batch_size)
+        setActiveChapterSeq(seq)
+        setCenterView('plan')
+        setSelectedCid(optimisticId)
+      } catch {
+        // 没有进行中任务就保持空书；不阻塞切书。
+      }
+    })
     loadCandidates()
     void loadCandidateReferences()
     return () => {
       chapterMaterializeVersion.current += 1
     }
-  }, [loadProjects, loadChapters, loadCandidates, loadCandidateReferences])
+  }, [loadProjects, loadChapters, loadCandidates, loadCandidateReferences, projectId])
 
   // 跨页深链（审计视图「跳章」→ /projects/:pid?chapter=<seq>）：一次性选中目标章并清参数
   useEffect(() => {
@@ -165,6 +285,9 @@ export default function WorkspacePage() {
       latestPlanArtifactRef.current = null
       latestWriteArtifactRef.current = null
       pendingAutoOpen.current = { taskId, chapterSeq: chapterSeq ?? null }
+      if (chapterSeq !== undefined) {
+        writeActiveWrite(projectId, { taskId, chapterSeq, batchTotal: total ?? null })
+      }
       // 单章任务带出对应章（右栏按章过滤）；批次任务不带（按 :ch{seq} 子线程切）
       setActiveChapterSeq(chapterSeq ?? null)
 
@@ -270,10 +393,11 @@ export default function WorkspacePage() {
       if (task.status === 'awaiting_review' && activeTaskId && activeChapterSeq) {
         setReleaseTarget({ taskId: activeTaskId, chapterSeq: activeChapterSeq, batchSize: batchTotal ?? undefined })
       } else if (task.status === 'done' || task.status === 'failed' || task.status === 'cancelled') {
+        clearActiveWrite(projectId)
         setReleaseTarget(null)
       }
     }
-  }, [taskPhase, task.status, loadChapters, loadCandidates, activeTaskId, activeChapterSeq, batchTotal])
+  }, [taskPhase, task.status, loadChapters, loadCandidates, activeTaskId, activeChapterSeq, batchTotal, projectId])
 
   // 单章完成或转人工后只自动打开一次刚生成的章。历史任务重载同样是 terminal，若不以
   // pendingAutoOpen 限定，用户从第 17 章点到其他章节时会立刻被旧终态 effect 拉回。
@@ -323,15 +447,30 @@ export default function WorkspacePage() {
 
   // 每章只呈现一份状态流转：选章后加载覆盖该章的最新生成任务，实时和历史共用一条流程。
   useEffect(() => {
+    const saved = readActiveWrite(projectId)
+    const pending = pendingAutoOpen.current
+    const remembered = pending?.taskId
+      ? {
+          taskId: pending.taskId,
+          chapterSeq: pending.chapterSeq,
+          batchTotal: saved?.taskId === pending.taskId ? saved.batchTotal : null,
+        }
+      : saved
+
     if (selectedSeq === null) {
+      // 切书恢复的同一轮里章节还没选上；不能把刚接上的 taskId 清掉。
+      if (remembered) return
       setActiveTaskId(null)
       setBatchTotal(null)
       setActiveChapterSeq(null)
       setReleaseTarget(null)
       return
     }
-    const pending = pendingAutoOpen.current
-    if (pending?.taskId === activeTaskIdRef.current && pending.chapterSeq === selectedSeq) {
+    if (remembered && remembered.chapterSeq === selectedSeq) {
+      activeTaskIdRef.current = remembered.taskId
+      setActiveTaskId(remembered.taskId)
+      setBatchTotal(remembered.batchTotal ?? null)
+      setActiveChapterSeq(selectedSeq)
       return
     }
     let cancelled = false
@@ -345,6 +484,14 @@ export default function WorkspacePage() {
         if (cancelled || requestVersion !== taskStartVersion.current) return
         const latest = latestGenerationTask(tasks)
         if (!latest) {
+          const keep = readActiveWrite(projectId)
+          if (keep && keep.chapterSeq === selectedSeq) {
+            activeTaskIdRef.current = keep.taskId
+            setActiveTaskId(keep.taskId)
+            setBatchTotal(keep.batchTotal)
+            setActiveChapterSeq(selectedSeq)
+            return
+          }
           setActiveTaskId(null)
           setBatchTotal(null)
           setActiveChapterSeq(null)
@@ -379,6 +526,13 @@ export default function WorkspacePage() {
   const planArtifact = task.artifacts.find((item) => item.chapterSeq === selectedSeq && item.stage === 'plan') ?? null
   const writeArtifact = task.artifacts.find((item) => item.chapterSeq === selectedSeq && item.stage === 'write') ?? null
   const taskIsCreating = task.status === 'queued' || task.status === 'running' || task.status === 'awaiting_plan'
+  const taskInFlight = Boolean(activeTaskId) && (
+    taskIsCreating
+    || task.status === 'awaiting_review'
+    || taskPhase === 'connecting'
+    || taskPhase === 'live'
+    || taskPhase === 'reconnecting'
+  )
   const hasPlan = planArtifact !== null || visibleTaskRuns.some((run) => (
     run.node === 'plan_chapter' && run.detail?.plan
   ))
@@ -535,6 +689,7 @@ export default function WorkspacePage() {
             <div className={styles.creationPage}>
               {centerView === 'plan' ? (
                 <ChapterPlanPanel
+                  key={`plan-${projectId}-${selectedChapter.chapter_seq}`}
                   taskId={activeTaskId}
                   chapterSeq={selectedChapter.chapter_seq}
                   status={task.status}
@@ -545,6 +700,7 @@ export default function WorkspacePage() {
                 />
               ) : taskIsCreating ? (
                 <StreamingChapterView
+                  key={`write-${projectId}-${selectedChapter.chapter_seq}`}
                   chapterSeq={selectedChapter.chapter_seq}
                   artifact={writeArtifact}
                   summary={selectedChapter.summary}
@@ -588,11 +744,11 @@ export default function WorkspacePage() {
           projectId={projectId}
           chapters={chapters}
           selectedChapter={selectedChapter}
-          taskBusy={taskIsCreating || task.status === 'awaiting_review'}
+          taskBusy={taskInFlight}
           onTaskStart={handleTaskStart}
         />
         <TaskTimeline
-          key={`flow-${selectedSeq ?? 'none'}`}
+          key={`flow-${projectId}-${selectedSeq ?? 'none'}`}
           taskId={activeTaskId}
           phase={task.phase}
           status={task.status}
@@ -606,7 +762,7 @@ export default function WorkspacePage() {
           canControl={batchTotal !== null}
           refresh={task.refresh}
         />
-        <AuditPanel key={`audit-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
+        <AuditPanel key={`audit-${projectId}-${selectedSeq ?? 'none'}`} runs={visibleTaskRuns} onNavigateChapter={handleNavigateChapter} />
         <CandidatePanel
           key={`${projectId}:${selectedSeq ?? 'none'}`}
           projectId={projectId}

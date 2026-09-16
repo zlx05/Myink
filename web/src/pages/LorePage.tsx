@@ -239,14 +239,22 @@ export default function LorePage() {
                 {outline.volumes.length === 0 ? (
                   <div className="empty">大纲暂无卷。</div>
                 ) : (
-                  outline.volumes.map((v, vi) => (
-                    <div key={vi} className={styles.block}>
-                      <span className={styles.cardLabel}>
-                        第 {v.volume_seq ?? vi + 1} 卷 · {v.title || '（未命名）'}
-                        {v.chapter_start && v.chapter_end
-                          ? ` · 第 ${v.chapter_start}–${v.chapter_end} 章`
-                          : ''}
-                      </span>
+                  <div className={styles.outlineStack}>
+                  {outline.volumes.map((v, vi) => (
+                    <details key={vi} className={styles.volumeFold}>
+                      <summary className={styles.foldSummary}>
+                        <span className={styles.foldTitle}>
+                          第 {v.volume_seq ?? vi + 1} 卷大纲
+                          {v.title ? ` · ${v.title}` : ''}
+                        </span>
+                        <span className={styles.foldMeta}>
+                          {v.chapter_start && v.chapter_end
+                            ? `第 ${v.chapter_start}–${v.chapter_end} 章`
+                            : '章区间未定'}
+                          {(v.stages?.length ?? 0) > 0 ? ` · ${v.stages?.length} 段` : ''}
+                        </span>
+                      </summary>
+                      <div className={styles.foldBody}>
                       {v.theme && <span className="badge">{v.theme}</span>}
                       {v.goal && <span className={styles.entityDesc}>卷目标：{v.goal}</span>}
                       {v.key_results && v.key_results.length > 0 && (
@@ -257,28 +265,29 @@ export default function LorePage() {
                         </ul>
                       )}
                       {v.end_event && <span className={styles.entityDesc}>卷末事件：{v.end_event}</span>}
-                      <span className={styles.cardLabel}>本卷阶段</span>
                       {!(v.stages && v.stages.length) ? (
                         <div className="empty">本卷暂无阶段。</div>
                       ) : (
-                        <ul className={styles.entityList}>
-                          {v.stages.map((s, si) => (
-                            <li key={s.stage_seq ?? si} className={styles.entityItem}>
-                              <span className={styles.entityHead}>
-                                <span className={styles.entityName}>{s.name || `第 ${si + 1} 段`}</span>
-                                {s.chapter_start && s.chapter_end && (
-                                  <span className="badge">
-                                    第 {s.chapter_start}–{s.chapter_end} 章
-                                  </span>
-                                )}
+                        v.stages.map((s, si) => (
+                          <details key={s.stage_seq ?? si} className={styles.stageFold}>
+                            <summary className={styles.foldSummary}>
+                              <span className={styles.foldTitle}>{s.name || `第 ${si + 1} 段`}</span>
+                              <span className={styles.foldMeta}>
+                                {s.chapter_start && s.chapter_end
+                                  ? `第 ${s.chapter_start}–${s.chapter_end} 章`
+                                  : '章区间未定'}
                               </span>
-                              {s.goal && <span className={styles.entityDesc}>{s.goal}</span>}
-                            </li>
-                          ))}
-                        </ul>
+                            </summary>
+                            {s.goal && (
+                              <p className={`${styles.entityDesc} ${styles.foldBody}`}>{s.goal}</p>
+                            )}
+                          </details>
+                        ))
                       )}
-                    </div>
-                  ))
+                      </div>
+                    </details>
+                  ))}
+                  </div>
                 )}
               </div>
             )}

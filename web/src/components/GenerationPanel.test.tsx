@@ -152,6 +152,31 @@ it('binds a batch task to its first chapter page', async () => {
   expect(onTaskStart).toHaveBeenCalledWith('batch-17', 3, 17)
 })
 
+it('clears the previous book notice when switching projects', async () => {
+  vi.mocked(api.generateChapter).mockResolvedValue({ task_id: 'task-17', trace_id: 'trace-17', status: 'queued' })
+  const { rerender } = render(
+    <GenerationPanel
+      projectId="project-a"
+      chapters={[chapter]}
+      selectedChapter={chapter}
+      onTaskStart={() => {}}
+    />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: '写下一章（第 17 章）' }))
+  expect((await screen.findByRole('status')).textContent).toContain('第 17 章写作任务已创建')
+
+  rerender(
+    <GenerationPanel
+      projectId="project-b"
+      chapters={[]}
+      selectedChapter={null}
+      onTaskStart={() => {}}
+    />,
+  )
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(screen.getByText('下一章：第 1 章')).toBeTruthy()
+})
+
 it('manual mode is sent with the chapter request and disables batch generation', async () => {
   vi.mocked(api.generateChapter).mockResolvedValue({ task_id: 'manual-17', trace_id: 'trace-manual', status: 'queued' })
   const onTaskStart = vi.fn()

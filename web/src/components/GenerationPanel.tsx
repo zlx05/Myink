@@ -1,7 +1,7 @@
 // 生成入口：写下一章（永远写「已写最大章 + 1」的下一未写章）+ 重写本章（仅 confirmed 章，
 // 带确认弹窗）+ 批次生成（N≤20，成本估算标注「估算」）。
 // 失败 → 中文横幅；成功 → onTaskStart(taskId) 交给时间线。
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
 import type { ChapterMeta, WritingMode } from '../types'
@@ -29,6 +29,13 @@ export function GenerationPanel({ projectId, chapters, selectedChapter, taskBusy
   const [busy, setBusy] = useState<null | 'chapter' | 'batch'>(null)
   const [banner, setBanner] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    setInstruction('')
+    setBusy(null)
+    setBanner(null)
+    setNotice(null)
+  }, [projectId])
 
   // 已写最大章序 + 下一章序号（空项目 → 1，与 worker _guard_write_order 语义一致）。
   // 章节列表只有已物化行：写下一章 = seq 恒为 max_seq+1，绝不踩「选已写章被守卫拒绝」。

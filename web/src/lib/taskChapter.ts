@@ -49,6 +49,18 @@ export function latestGenerationTask(tasks: TaskSummary[]): TaskSummary | null {
   return tasks.find((task) => task.task_type === 'chapter_generate' || task.task_type === 'batch_generate') ?? null
 }
 
+const ACTIVE_GENERATION_STATUSES = new Set([
+  'queued', 'running', 'paused', 'awaiting_plan', 'awaiting_review',
+])
+
+/** 切书回来时只接还在跑/待确认的生成任务，忽略已经结束的历史任务。 */
+export function latestActiveGenerationTask(tasks: TaskSummary[]): TaskSummary | null {
+  return tasks.find((task) => (
+    (task.task_type === 'chapter_generate' || task.task_type === 'batch_generate')
+    && ACTIVE_GENERATION_STATUSES.has(task.status)
+  )) ?? null
+}
+
 export interface ChapterFilterOpts {
   /** 活动任务 id（SSE 时间线）；null = 无活动任务，不过滤 */
   taskId: string | null

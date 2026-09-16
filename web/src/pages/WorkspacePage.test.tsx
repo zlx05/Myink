@@ -115,6 +115,7 @@ afterEach(() => {
   cleanup()
   vi.clearAllMocks()
   liveTask.artifacts = []
+  sessionStorage.clear()
 })
 
 it('keeps auto Plan full-page until the first real Write artifact then flips once', async () => {
@@ -203,4 +204,97 @@ it('creates and selects chapter 13 before showing its task flow', async () => {
   fireEvent.click(screen.getByRole('button', { name: /正文/ }))
   expect(await screen.findByText('write-page-13')).toBeTruthy()
   expect(screen.queryByText('plan-page-13')).toBeNull()
+})
+
+it('ignores a late chapter list from the previous book after switching projects', async () => {
+  const bookAChapter: ChapterMeta = {
+    id: 'chapter-3',
+    chapter_seq: 3,
+    title: null,
+    status: 'planning',
+    word_count: 0,
+    summary: null,
+  }
+  let resolveA: (value: ChapterMeta[]) => void = () => {}
+  const bookAPending = new Promise<ChapterMeta[]>((resolve) => { resolveA = resolve })
+
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.listChapters).mockImplementation((pid: string) => (
+    pid === 'project-a' ? bookAPending : Promise.resolve([])
+  ))
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-a'] },
+  )
+  render(<RouterProvider router={router} />)
+
+  await act(async () => { await router.navigate('/projects/project-b') })
+  await act(async () => { resolveA([bookAChapter]) })
+
+  expect(screen.queryByRole('button', { name: 'chapter-3' })).toBeNull()
+  expect(screen.getByText('还没有章节。在右侧发起首次生成。')).toBeTruthy()
+})
+
+it('reconnects from the remembered write when the worker has not persisted the task yet', async () => {
+  sessionStorage.setItem('aiink.activeWrite.project-a', JSON.stringify({
+    taskId: 'task-2', chapterSeq: 2, batchTotal: null,
+  }))
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.listChapters).mockResolvedValue([])
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockResolvedValue([])
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-b'] },
+  )
+  render(<RouterProvider router={router} />)
+  await screen.findByText('还没有章节。在右侧发起首次生成。')
+
+  await act(async () => { await router.navigate('/projects/project-a') })
+
+  expect(await screen.findByText('plan-page-2')).toBeTruthy()
+  expect(screen.getByText('timeline-task-2-chapter-2')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'chapter-2' })).toBeTruthy()
+})
+
+it('reconnects an in-flight writing task after switching back before the chapter row exists', async () => {
+  const running = {
+    task_id: 'task-3',
+    task_type: 'chapter_generate' as const,
+    status: 'running' as const,
+    chapter_seq: 3,
+    batch_size: null,
+    batch_current: null,
+    cost_total: 0,
+    error: null,
+    created_at: null,
+  }
+  vi.mocked(api.listProjects).mockResolvedValue([])
+  vi.mocked(api.listChapters).mockResolvedValue([])
+  vi.mocked(api.listCandidates).mockResolvedValue([])
+  vi.mocked(api.listGraph).mockResolvedValue({ nodes: [], edges: [] })
+  vi.mocked(api.listForeshadows).mockResolvedValue([])
+  vi.mocked(api.listTasks).mockImplementation((pid: string) => (
+    pid === 'project-a' ? Promise.resolve([running]) : Promise.resolve([])
+  ))
+
+  const router = createMemoryRouter(
+    [{ path: '/projects/:projectId', element: <WorkspacePage /> }],
+    { initialEntries: ['/projects/project-b'] },
+  )
+  render(<RouterProvider router={router} />)
+  await screen.findByText('还没有章节。在右侧发起首次生成。')
+
+  await act(async () => { await router.navigate('/projects/project-a') })
+
+  expect(await screen.findByText('plan-page-3')).toBeTruthy()
+  expect(screen.getByText('timeline-task-3-chapter-3')).toBeTruthy()
 })

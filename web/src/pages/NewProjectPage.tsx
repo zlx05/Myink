@@ -39,6 +39,10 @@ function arrayToLines(arr: string[]): string {
   return arr.join('\n')
 }
 
+function chapterRangeLabel(start?: number, end?: number): string {
+  return start && end ? `第 ${start}–${end} 章` : ''
+}
+
 /** world_rules 键值编辑器：每行「键：值」（全角/半角冒号首个分隔），值可含冒号 */
 function worldRulesToText(wr: Record<string, string>): string {
   return Object.entries(wr)
@@ -772,145 +776,203 @@ export default function NewProjectPage() {
                 />
               </details>
               {outline && (
-                <div>
+                <div className={styles.outlineStack}>
                   <div className={styles.block}>
                     <span className={styles.fieldLabel}>全书 Objective（终局，可验证状态）</span>
                     <textarea
-                      className="textarea"
-                      rows={2}
+                      className={`textarea ${styles.growArea}`}
+                      rows={4}
                       value={outline.objective}
                       onChange={(e) => updateOutline({ objective: e.target.value })}
                       placeholder="如：从杂役修士成为宗门长老并公开父辈冤案真相"
                     />
                   </div>
-                  {outline.volumes.map((v, vi) => (
-                      <div key={vi} className={`${styles.block} ${styles.volumeBlock}`}>
-                        <div className={styles.rowGrid}>
-                          <span className={styles.fieldLabel}>
-                            第 {vi + 1} 卷
-                            {v.chapter_start && v.chapter_end
-                              ? ` · 第 ${v.chapter_start}–${v.chapter_end} 章`
-                              : ''}
+                  {outline.volumes.map((v, vi) => {
+                    const volumeRange = chapterRangeLabel(v.chapter_start, v.chapter_end)
+                    const stageCount = (v.stages ?? []).length
+                    return (
+                      <details key={vi} className={styles.volumeFold}>
+                        <summary className={styles.foldSummary}>
+                          <span className={styles.foldTitle}>
+                            第 {vi + 1} 卷大纲
+                            {v.title ? ` · ${v.title}` : ''}
                           </span>
-                          <input
-                            className="input"
-                            placeholder="卷名"
-                            value={v.title}
-                            onChange={(e) => updateVolume(vi, { title: e.target.value })}
-                          />
-                        </div>
-                        <div className={styles.rowGrid}>
-                          <span className={styles.fieldLabel}>主题</span>
-                          <input
-                            className="input"
-                            value={v.theme ?? ''}
-                            placeholder="一句话主题"
-                            onChange={(e) => updateVolume(vi, { theme: e.target.value })}
-                          />
-                        </div>
-                        <div className={styles.rowGrid}>
-                          <input
-                            className="input"
-                            type="number"
-                            min={1}
-                            placeholder="起始章"
-                            value={v.chapter_start ?? ''}
-                            onChange={(e) =>
-                              updateVolume(vi, { chapter_start: Number(e.target.value) || undefined })
-                            }
-                          />
-                          <input
-                            className="input"
-                            type="number"
-                            min={1}
-                            placeholder="结束章"
-                            value={v.chapter_end ?? ''}
-                            onChange={(e) =>
-                              updateVolume(vi, { chapter_end: Number(e.target.value) || undefined })
-                            }
-                          />
-                        </div>
-                        <textarea
-                          className="textarea"
-                          rows={1}
-                          placeholder="卷目标（本卷结束时主角须达到的可验证状态）"
-                          value={v.goal}
-                          onChange={(e) => updateVolume(vi, { goal: e.target.value })}
-                        />
-                        <textarea
-                          className="textarea"
-                          rows={1}
-                          placeholder="关键结果 KR（每行一条）"
-                          value={arrayToLines(v.key_results ?? [])}
-                          onChange={(e) => updateVolume(vi, { key_results: linesToArray(e.target.value) })}
-                        />
-                        <textarea
-                          className="textarea"
-                          rows={1}
-                          placeholder="卷末不可逆事件（只写事件，不写第几章）"
-                          value={v.end_event ?? ''}
-                          onChange={(e) => updateVolume(vi, { end_event: e.target.value })}
-                        />
-                        {(v.stages ?? []).map((s, si) => (
-                          <div key={si} className={styles.block}>
-                            <div className={styles.rowGrid}>
-                              <input
-                                className="input"
-                                placeholder="阶段名（前期/中期/后期）"
-                                value={s.name}
-                                onChange={(e) => updateStage(vi, si, { name: e.target.value })}
-                              />
+                          <span className={styles.foldMeta}>
+                            {volumeRange || '章区间未定'}
+                            {stageCount ? ` · ${stageCount} 段` : ''}
+                          </span>
+                        </summary>
+                        <div className={styles.foldBody}>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>卷名</span>
+                            <input
+                              className="input"
+                              placeholder="卷名"
+                              value={v.title}
+                              onChange={(e) => updateVolume(vi, { title: e.target.value })}
+                            />
+                          </label>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>主题</span>
+                            <input
+                              className="input"
+                              value={v.theme ?? ''}
+                              placeholder="一句话主题"
+                              onChange={(e) => updateVolume(vi, { theme: e.target.value })}
+                            />
+                          </label>
+                          <div className={styles.rangeRow}>
+                            <label className={styles.field}>
+                              <span className={styles.fieldLabel}>起始章</span>
                               <input
                                 className="input"
                                 type="number"
                                 min={1}
                                 placeholder="起始章"
-                                value={s.chapter_start ?? ''}
+                                value={v.chapter_start ?? ''}
                                 onChange={(e) =>
-                                  updateStage(vi, si, { chapter_start: Number(e.target.value) || undefined })
+                                  updateVolume(vi, { chapter_start: Number(e.target.value) || undefined })
                                 }
                               />
+                            </label>
+                            <label className={styles.field}>
+                              <span className={styles.fieldLabel}>结束章</span>
                               <input
                                 className="input"
                                 type="number"
                                 min={1}
                                 placeholder="结束章"
-                                value={s.chapter_end ?? ''}
+                                value={v.chapter_end ?? ''}
                                 onChange={(e) =>
-                                  updateStage(vi, si, { chapter_end: Number(e.target.value) || undefined })
+                                  updateVolume(vi, { chapter_end: Number(e.target.value) || undefined })
                                 }
                               />
-                              <button
-                                type="button"
-                                className="btn btn-quiet"
-                                onClick={() => removeStage(vi, si)}
-                              >
-                                删
-                              </button>
-                            </div>
-                            <textarea
-                              className="textarea"
-                              rows={1}
-                              placeholder="阶段目标（约 30 章一段，会注入写作）"
-                              value={s.goal}
-                              onChange={(e) => updateStage(vi, si, { goal: e.target.value })}
-                            />
-                            <textarea
-                              className="textarea"
-                              rows={Math.max(1, s.beats?.length ?? 0)}
-                              placeholder="阶段节拍（每行一条）"
-                              value={arrayToLines(s.beats ?? [])}
-                              onChange={(e) =>
-                                updateStage(vi, si, { beats: linesToArray(e.target.value) })
-                              }
-                            />
+                            </label>
                           </div>
-                        ))}
-                        <button type="button" className="btn btn-quiet" onClick={() => addStage(vi)}>
-                          + 本卷加一段
-                        </button>
-                      </div>
-                  ))}
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>卷目标</span>
+                            <textarea
+                              className={`textarea ${styles.growArea}`}
+                              rows={3}
+                              placeholder="本卷结束时主角须达到的可验证状态"
+                              value={v.goal}
+                              onChange={(e) => updateVolume(vi, { goal: e.target.value })}
+                            />
+                          </label>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>关键结果 KR（每行一条）</span>
+                            <textarea
+                              className={`textarea ${styles.growArea}`}
+                              rows={4}
+                              placeholder="每行一条可验证结果"
+                              value={arrayToLines(v.key_results ?? [])}
+                              onChange={(e) => updateVolume(vi, { key_results: linesToArray(e.target.value) })}
+                            />
+                          </label>
+                          <label className={styles.field}>
+                            <span className={styles.fieldLabel}>卷末不可逆事件</span>
+                            <textarea
+                              className={`textarea ${styles.growArea}`}
+                              rows={3}
+                              placeholder="只写事件，不写第几章"
+                              value={v.end_event ?? ''}
+                              onChange={(e) => updateVolume(vi, { end_event: e.target.value })}
+                            />
+                          </label>
+                          {(v.stages ?? []).map((s, si) => {
+                            const stageRange = chapterRangeLabel(s.chapter_start, s.chapter_end)
+                            return (
+                              <details key={si} className={styles.stageFold}>
+                                <summary className={styles.foldSummary}>
+                                  <span className={styles.foldTitle}>
+                                    {s.name || `第 ${si + 1} 段`}
+                                  </span>
+                                  <span className={styles.foldMeta}>{stageRange || '章区间未定'}</span>
+                                </summary>
+                                <div className={styles.foldBody}>
+                                  <div className={styles.stageHead}>
+                                    <label className={styles.field}>
+                                      <span className={styles.fieldLabel}>阶段名</span>
+                                      <input
+                                        className="input"
+                                        placeholder="前期 / 中期 / 后期"
+                                        value={s.name}
+                                        onChange={(e) => updateStage(vi, si, { name: e.target.value })}
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      className="btn btn-quiet"
+                                      onClick={() => removeStage(vi, si)}
+                                    >
+                                      删除本段
+                                    </button>
+                                  </div>
+                                  <div className={styles.rangeRow}>
+                                    <label className={styles.field}>
+                                      <span className={styles.fieldLabel}>起始章</span>
+                                      <input
+                                        className="input"
+                                        type="number"
+                                        min={1}
+                                        placeholder="起始章"
+                                        value={s.chapter_start ?? ''}
+                                        onChange={(e) =>
+                                          updateStage(vi, si, {
+                                            chapter_start: Number(e.target.value) || undefined,
+                                          })
+                                        }
+                                      />
+                                    </label>
+                                    <label className={styles.field}>
+                                      <span className={styles.fieldLabel}>结束章</span>
+                                      <input
+                                        className="input"
+                                        type="number"
+                                        min={1}
+                                        placeholder="结束章"
+                                        value={s.chapter_end ?? ''}
+                                        onChange={(e) =>
+                                          updateStage(vi, si, {
+                                            chapter_end: Number(e.target.value) || undefined,
+                                          })
+                                        }
+                                      />
+                                    </label>
+                                  </div>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>阶段目标</span>
+                                    <textarea
+                                      className={`textarea ${styles.growArea}`}
+                                      rows={3}
+                                      placeholder="约 30 章一段，写作时会注入当前阶段"
+                                      value={s.goal}
+                                      onChange={(e) => updateStage(vi, si, { goal: e.target.value })}
+                                    />
+                                  </label>
+                                  <label className={styles.field}>
+                                    <span className={styles.fieldLabel}>阶段节拍（每行一条）</span>
+                                    <textarea
+                                      className={`textarea ${styles.growArea}`}
+                                      rows={Math.max(4, s.beats?.length ?? 0)}
+                                      placeholder="谁 + 在何处 + 做什么 + 导致什么"
+                                      value={arrayToLines(s.beats ?? [])}
+                                      onChange={(e) =>
+                                        updateStage(vi, si, { beats: linesToArray(e.target.value) })
+                                      }
+                                    />
+                                  </label>
+                                </div>
+                              </details>
+                            )
+                          })}
+                          <button type="button" className="btn btn-quiet" onClick={() => addStage(vi)}>
+                            + 本卷加一段
+                          </button>
+                        </div>
+                      </details>
+                    )
+                  })}
                   <div className={styles.saveRow}>
                     <button type="button" className="btn btn-quiet" disabled={busy !== null} onClick={addVolume}>
                       + 新增一卷

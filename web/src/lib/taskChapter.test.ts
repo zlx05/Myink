@@ -1,6 +1,6 @@
 // 右栏按章过滤纯函数单测（§11：批次按 :ch{seq} 子线程切 / 单章按 activeChapterSeq 对齐）。
 import { describe, expect, it } from 'vitest'
-import { chapterRunsOf, chapterToOpenAfterTask, chapterToOpenForPendingTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from './taskChapter'
+import { chapterRunsOf, chapterToOpenAfterTask, chapterToOpenForPendingTask, latestActiveGenerationTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from './taskChapter'
 import type { AgentRun, ChapterMeta, TaskSummary } from '../types'
 
 const runs: AgentRun[] = [
@@ -92,6 +92,16 @@ describe('latestGenerationTask', () => {
     const tasks = [summary('audit', 'global_audit'), summary('latest', 'chapter_generate'), summary('old', 'batch_generate')]
     expect(latestGenerationTask(tasks)?.task_id).toBe('latest')
     expect(latestGenerationTask([summary('audit', 'global_audit')])).toBeNull()
+  })
+
+  it('切书恢复只接还在跑的生成任务', () => {
+    const running: TaskSummary = {
+      ...summary('live', 'chapter_generate'),
+      status: 'running',
+      chapter_seq: 3,
+    }
+    expect(latestActiveGenerationTask([summary('done', 'chapter_generate'), running])?.task_id).toBe('live')
+    expect(latestActiveGenerationTask([summary('done', 'chapter_generate')])).toBeNull()
   })
 })
 
