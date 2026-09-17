@@ -260,11 +260,11 @@
 .stageFold {
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(255, 255, 252, 0.92);
+  background: var(--surface-1);
 }
 
 .stageFold {
-  background: rgba(248, 246, 240, 0.7);
+  background: var(--surface-2);
 }
 
 .foldSummary {

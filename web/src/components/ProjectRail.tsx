@@ -1,4 +1,4 @@
-// 左 rail：项目切换（active 高亮）+ 当前用户 + 登出。
+// 左 rail：作品列表；进书后是设定/创作设置/全局审计；作品库等全局页才露出环境配置和主题。
 import { NavLink, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import type { Project } from '../types'
@@ -28,51 +28,57 @@ export function ProjectRail({ projects, onLogout }: Props) {
           </NavLink>
         ))}
       </nav>
-      <div className={styles.pageLinks}>
-        {!projectId && (
+      {projectId && (
+        <div className={styles.pageLinks}>
           <NavLink
-            to="/environment"
+            to={`/projects/${projectId}/lore`}
             className={({ isActive }) =>
               isActive ? `${styles.item} ${styles.active}` : styles.item
             }
           >
+            <span className={styles.title}>设定</span>
+          </NavLink>
+          <NavLink
+            to={`/projects/${projectId}/settings`}
+            className={({ isActive }) =>
+              isActive ? `${styles.item} ${styles.active}` : styles.item
+            }
+          >
+            <span className={styles.title}>创作设置</span>
+          </NavLink>
+          <NavLink
+            to={`/projects/${projectId}/audit`}
+            className={({ isActive }) =>
+              isActive ? `${styles.item} ${styles.active}` : styles.item
+            }
+          >
+            <span className={styles.title}>全局审计</span>
+          </NavLink>
+        </div>
+      )}
+      {!projectId && (
+        <nav className={styles.settings} aria-label="全局设置">
+          <NavLink
+            to="/environment"
+            className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+          >
             <span className={styles.title}>环境配置</span>
           </NavLink>
-        )}
-        {projectId && (
-          <>
-            <NavLink
-              to={`/projects/${projectId}/lore`}
-              className={({ isActive }) =>
-                isActive ? `${styles.item} ${styles.active}` : styles.item
-              }
-            >
-              <span className={styles.title}>设定</span>
-            </NavLink>
-            <NavLink
-              to={`/projects/${projectId}/settings`}
-              className={({ isActive }) =>
-                isActive ? `${styles.item} ${styles.active}` : styles.item
-              }
-            >
-              <span className={styles.title}>创作设置</span>
-            </NavLink>
-            <NavLink
-              to={`/projects/${projectId}/audit`}
-              className={({ isActive }) =>
-                isActive ? `${styles.item} ${styles.active}` : styles.item
-              }
-            >
-              <span className={styles.title}>全局审计</span>
-            </NavLink>
-          </>
-        )}
-      </div>
+          <NavLink
+            to="/theme"
+            className={({ isActive }) => (isActive ? `${styles.item} ${styles.active}` : styles.item)}
+          >
+            <span className={styles.title}>主题</span>
+          </NavLink>
+        </nav>
+      )}
       <div className={styles.foot}>
-        <span className={styles.user}>{session?.username}</span>
-        <button type="button" className="btn btn-quiet" onClick={onLogout}>
-          登出
-        </button>
+        <div className={styles.userRow}>
+          <span className={styles.user}>{session?.username}</span>
+          <button type="button" className="btn btn-quiet" onClick={onLogout}>
+            登出
+          </button>
+        </div>
       </div>
     </aside>
   )

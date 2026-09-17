@@ -70,6 +70,109 @@
   --content-max: 1280px;
   --shadow-soft: 0 10px 28px rgba(95, 77, 58, 0.1), 0 2px 5px rgba(95, 77, 58, 0.05);
   --shadow-lift: 0 15px 32px rgba(95, 77, 58, 0.14), 0 3px 7px rgba(95, 77, 58, 0.07);
+
+  /* 派生：标题 / 链接 / 按钮字色 / 输入底，方便整套换肤 */
+  --heading: #4e4364;
+  --link-hover: #5e946c;
+  --btn-primary-ink: #365544;
+  --btn-primary-border: #b4dfbd;
+  --btn-secondary-border: #ded5ea;
+  --input-bg: rgba(255, 255, 252, 0.78);
+  --rail-bg: rgba(255, 255, 252, 0.77);
+  --rail-item-hover: #f3efe6;
+  --rail-active-ink: #4d7357;
+  --quiet-hover: #f0ece4;
+  --badge-success-bg: #eef9ee;
+  --badge-success-border: #add3b9;
+  --canvas-image: none;
+}
+
+html[data-theme='night'] {
+  color-scheme: dark;
+  --canvas: #121212;
+  --surface-1: #1c1c1c;
+  --surface-2: #242424;
+  --surface-3: #2c2c2c;
+  --line: #333333;
+  --line-strong: #454545;
+  --ink: #e6e6e6;
+  --ink-muted: #a3a3a3;
+  --ink-subtle: #7a7a7a;
+  --ink-faint: #5c5c5c;
+  --accent: #7dba90;
+  --accent-hover: #6eab81;
+  --accent-pressed: #5f9c72;
+  --focus: #7dba90;
+  --accent-soft: #1e2a22;
+  --peach-soft: #2a2220;
+  --lavender-soft: #22222a;
+  --success: #7ec89a;
+  --warning: #c9a15a;
+  --error: #d0807c;
+  --editor: #181818;
+  --editor-ink: #e6e6e6;
+  --editor-muted: #9a9a9a;
+  --shadow-soft: 0 8px 20px rgba(0, 0, 0, 0.28);
+  --shadow-lift: 0 12px 24px rgba(0, 0, 0, 0.32);
+  --sev-critical: #e48686;
+  --sev-major: #e1b66b;
+  --sev-minor: #8cc8b4;
+  --sev-hint: #8d969f;
+  --heading: #f2f2f2;
+  --link-hover: #9dceb0;
+  --btn-primary-ink: #102016;
+  --btn-primary-border: #5f8f6e;
+  --btn-secondary-border: #3a3844;
+  --input-bg: #1c1c1c;
+  --rail-bg: #161616;
+  --rail-item-hover: #2a2a2a;
+  --rail-active-ink: #d4eadc;
+  --quiet-hover: #2a2a2a;
+  --badge-success-bg: #1e2a22;
+  --badge-success-border: #5f8f6e;
+}
+
+html[data-theme='contrast'] {
+  color-scheme: light;
+  --canvas: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f4f4f4;
+  --surface-3: #ebebeb;
+  --line: #c8c8c8;
+  --line-strong: #8a8a8a;
+  --ink: #141414;
+  --ink-muted: #3d3d3d;
+  --ink-subtle: #5a5a5a;
+  --ink-faint: #6e6e6e;
+  --accent: #1f7a3a;
+  --accent-hover: #176430;
+  --accent-pressed: #124f26;
+  --focus: #145c2c;
+  --accent-soft: #d9f0e0;
+  --peach-soft: #f8d7d0;
+  --lavender-soft: #e6e0f0;
+  --success: #157a38;
+  --warning: #8a5a00;
+  --error: #a32020;
+  --editor: #ffffff;
+  --editor-ink: #111111;
+  --editor-muted: #444444;
+  --heading: #111111;
+  --link-hover: #145c2c;
+  --btn-primary-ink: #ffffff;
+  --btn-primary-border: #145c2c;
+  --btn-secondary-border: #8a8a8a;
+  --input-bg: #ffffff;
+  --rail-bg: #f7f7f7;
+  --rail-item-hover: #ececec;
+  --rail-active-ink: #124f26;
+  --quiet-hover: #ececec;
+  --badge-success-bg: #e3f5e8;
+  --badge-success-border: #1f7a3a;
+}
+
+html[data-theme='custom'] {
+  color-scheme: light;
 }
 
 /* severity / status 分级色（文字+icon+色三通道，不单靠颜色传达结果） */

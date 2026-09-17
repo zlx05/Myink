@@ -20,12 +20,12 @@
   text-align: left;
 }
 .item:hover {
-  background: #f4f0e8;
+  background: var(--rail-item-hover);
   color: var(--ink);
 }
 .active {
   background: var(--accent-soft);
-  color: #4d7357;
+  color: var(--rail-active-ink);
   outline: 1px solid rgba(138, 197, 148, 0.28);
 }
 

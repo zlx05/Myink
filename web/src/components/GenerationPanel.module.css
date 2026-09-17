@@ -61,10 +61,10 @@
 
 .notice {
   padding: var(--space-2) var(--space-3);
-  border: 1px solid #b4dfbd;
+  border: 1px solid var(--badge-success-border);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--accent) 12%, white);
-  color: #42654c;
+  background: var(--accent-soft);
+  color: var(--rail-active-ink);
   font-size: var(--text-small);
   line-height: 1.5;
 }
@@ -88,7 +88,7 @@
   padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: #fffdf8;
+  background: var(--surface-2);
 }
 
 .modeSwitch legend {
@@ -113,9 +113,9 @@
 }
 
 .modeActive {
-  border-color: #91cfa8 !important;
-  background: #eaf7ef;
-  color: #286a43;
+  border-color: var(--accent) !important;
+  background: var(--accent-soft);
+  color: var(--rail-active-ink);
   font-weight: 650;
 }
 
@@ -166,7 +166,7 @@
 .emptyHint {
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  background: #fffdf7;
+  background: var(--surface-2);
   border: 1px dashed var(--line);
   border-radius: var(--radius-sm);
   color: var(--ink-subtle);

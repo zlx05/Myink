@@ -8,7 +8,7 @@
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  background: var(--canvas);
+  background: transparent;
 }
 
 .inner {
@@ -45,7 +45,7 @@
 
 .sectionTitle {
   font-size: 28px;
-  color: #4e4364;
+  color: var(--heading);
 }
 
 .hint {
@@ -53,6 +53,521 @@
   color: var(--ink-muted);
   font-size: 14px;
   line-height: 1.6;
+}
+
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-3);
+}
+
+.themeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-1);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.themeCard:hover {
+  border-color: var(--accent);
+}
+
+.themeCardActive {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.themePreview {
+  --preview-scale: 0.22;
+  width: 100%;
+  height: calc(540px * var(--preview-scale));
+  overflow: hidden;
+  background-color: var(--preview-canvas);
+  background-image: var(--preview-image);
+  background-size: cover;
+  background-position: var(--preview-position, center);
+}
+
+.themePreviewLarge {
+  border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.themePreviewApp {
+  display: flex;
+  width: 1320px;
+  height: 540px;
+  gap: 10px;
+  padding: 22px;
+  overflow: hidden;
+  color: var(--preview-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  transform: scale(var(--preview-scale));
+  transform-origin: top left;
+}
+
+.themePreviewRail,
+.themePreviewPanel,
+.themePreviewMain {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent);
+  border-radius: 10px;
+  background: var(--preview-chrome, var(--preview-editor));
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--preview-ink) 8%, transparent);
+}
+
+.themePreviewRail {
+  width: 132px;
+  padding: 12px 10px;
+}
+
+.themePreviewRailList {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.themePreviewRailFoot {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--preview-ink) 10%, transparent);
+}
+
+.themePreviewPanel {
+  width: 176px;
+  padding: 12px 10px;
+  gap: 6px;
+}
+
+.themePreviewRight {
+  width: 252px;
+}
+
+.themePreviewMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+}
+
+.themePreviewBrand {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.themePreviewItem,
+.themePreviewChapter,
+.themePreviewGhost,
+.themePreviewField,
+.themePreviewAction {
+  overflow: hidden;
+  padding: 3px 5px;
+  border-radius: 4px;
+  color: color-mix(in srgb, var(--preview-ink) 62%, var(--preview-canvas));
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.themePreviewItemActive {
+  background: var(--preview-accent-soft, color-mix(in srgb, var(--preview-accent) 34%, transparent));
+  color: var(--preview-ink);
+}
+
+.themePreviewChapter {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: normal;
+}
+
+.themePreviewChapter small,
+.themePreviewPanelHead small,
+.themePreviewEditorHead small,
+.themePreviewTabs small,
+.themePreviewRight > small {
+  color: color-mix(in srgb, var(--preview-ink) 48%, var(--preview-canvas));
+  font-size: 9px;
+}
+
+.themePreviewUser,
+.themePreviewEditorHead,
+.themePreviewEditorFoot,
+.themePreviewTools,
+.themePreviewModes,
+.themePreviewBatch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.themePreviewPanelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 6px;
+}
+
+.themePreviewTabs {
+  display: flex;
+  gap: 10px;
+  padding: 7px 10px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--preview-ink) 10%, transparent);
+  color: color-mix(in srgb, var(--preview-ink) 46%, var(--preview-canvas));
+}
+
+.themePreviewTabs span,
+.themePreviewTabActive {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  padding-bottom: 5px;
+}
+
+.themePreviewTabActive {
+  border-bottom: 2px solid var(--preview-accent);
+  color: var(--preview-ink);
+  font-weight: 700;
+}
+
+.themePreviewEditorHead {
+  padding: 8px 10px 0;
+}
+
+.themePreviewTitle {
+  color: var(--preview-ink);
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.themePreviewPaper {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 10px;
+  padding: 8px 9px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent);
+  border-radius: 6px;
+  background: var(--preview-editor);
+}
+
+.themePreviewBody {
+  margin: 0;
+  color: var(--preview-editor-ink);
+  font-family: var(--preview-font, var(--font-editor));
+  font-size: var(--preview-editor-size, 11px);
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.themePreviewInstruction {
+  min-height: 36px;
+  white-space: normal;
+  text-align: left;
+  color: color-mix(in srgb, var(--preview-ink) 38%, var(--preview-canvas));
+}
+
+.themePreviewEditorFoot {
+  padding: 0 10px 8px;
+}
+
+.themePreviewGhost,
+.themePreviewField {
+  border: 1px solid color-mix(in srgb, var(--preview-ink) 12%, transparent);
+  text-align: center;
+}
+
+.themePreviewAction {
+  background: var(--preview-accent);
+  color: var(--preview-canvas);
+  font-weight: 700;
+  text-align: center;
+}
+
+.themePreviewLabel {
+  color: color-mix(in srgb, var(--preview-ink) 52%, var(--preview-canvas));
+  font-size: 8px;
+}
+
+.themePreviewModes span {
+  flex: 1;
+  padding: 3px 0;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.themeCardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 12px;
+}
+
+.themeCardTitle {
+  font-weight: 600;
+}
+
+.themeDialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--ink) 32%, transparent);
+}
+
+.themeDialog {
+  display: flex;
+  width: min(1240px, 100%);
+  max-height: calc(100vh - 48px);
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+}
+
+.themeDialogHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.themeDialogHead > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.themeDialogHead h2 {
+  margin: 0;
+  color: var(--heading);
+  font-size: 22px;
+}
+
+.themeDialogHead p {
+  margin: 6px 0 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.themeDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.themeConfirm {
+  width: min(26rem, 100%);
+}
+
+.themeConfirmTitle {
+  margin: 0;
+  color: var(--heading);
+  font-size: 1.25rem;
+}
+
+.themeConfirmText {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.themeFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.themeField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.themeSwatchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.themeSwatchRow input[type='range'] {
+  flex: 1;
+}
+
+.themeChoiceRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.themeChoice {
+  display: flex;
+  min-width: 76px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.themeChoice:hover {
+  border-color: var(--accent);
+}
+
+.themeChoiceActive {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+  color: var(--ink);
+}
+
+.themeChoiceSample {
+  font-family: var(--font-editor);
+  line-height: 1.1;
+}
+
+.themeChoiceLabel {
+  color: var(--ink-muted);
+  font-size: var(--text-body);
+}
+
+.themeEditorHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.themeEditor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.85fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.themeEditorCol {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.themeSliderValue {
+  min-width: 44px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.themeChoiceTight {
+  min-width: 0;
+  padding: 10px 18px;
+  font-size: var(--text-body);
+}
+
+.themeWallpaperStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-2);
+  background-repeat: no-repeat;
+  cursor: grab;
+  touch-action: none;
+}
+
+.themeWallpaperStage:active {
+  cursor: grabbing;
+}
+
+.themeWallpaperActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.themeWallpaperPick {
+  position: relative;
+}
+
+.themeWallpaperInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.themeWallpaperRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.themeWallpaperZoom {
+  flex: 1;
+  min-width: 120px;
+}
+
+.themeDelete {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.themeDelete:hover:not(:disabled) {
+  background: var(--quiet-hover);
+  color: var(--error);
+}
+
+.themeDeleteArmed {
+  border-color: var(--error);
+  background: var(--error);
+  color: #fff;
+}
+
+.themeSwatchRow input[type='color'] {
+  width: 40px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+
+.themeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .field {
@@ -133,7 +648,7 @@
   padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fffdf8;
+  background: var(--surface-2);
 }
 
 .presetHead {
@@ -263,7 +778,8 @@
 
 @media (max-width: 1050px) {
   .connectionHead,
-  .connectionGrid {
+  .connectionGrid,
+  .themeEditor {
     grid-template-columns: 1fr;
   }
 

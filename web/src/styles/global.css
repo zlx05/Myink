@@ -19,7 +19,12 @@ body {
   font-size: var(--text-body);
   line-height: 1.5;
   color: var(--ink);
-  background: var(--canvas);
+  background-color: var(--canvas);
+  background-image: var(--canvas-image);
+  background-size: var(--canvas-size, cover);
+  background-position: var(--canvas-position, center);
+  background-repeat: var(--canvas-repeat, no-repeat);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -33,7 +38,7 @@ h3 {
 
 h1 {
   font-size: 34px;
-  color: #4e4364;
+  color: var(--heading);
 }
 h2 {
   font-size: 20px;
@@ -52,7 +57,7 @@ a {
   text-decoration: none;
 }
 a:hover {
-  color: #5e946c;
+  color: var(--link-hover);
 }
 
 /* 焦点可见态 */
@@ -73,7 +78,7 @@ a:hover {
   border: 1px solid transparent;
   cursor: pointer;
   font-weight: 500;
-  box-shadow: 0 1px 1px rgba(95, 77, 58, 0.04);
+  box-shadow: var(--shadow-soft);
   transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 .btn:disabled {
@@ -82,9 +87,9 @@ a:hover {
 }
 .btn-primary {
   background: var(--accent);
-  color: #365544;
-  border-color: #b4dfbd;
-  box-shadow: 0 6px 12px rgba(100, 145, 107, 0.2);
+  color: var(--btn-primary-ink);
+  border-color: var(--btn-primary-border);
+  box-shadow: var(--shadow-soft);
 }
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -98,8 +103,8 @@ a:hover {
 .btn-secondary {
   background: var(--lavender-soft);
   color: var(--ink);
-  border-color: #ded5ea;
-  box-shadow: 0 6px 12px rgba(107, 91, 132, 0.12);
+  border-color: var(--btn-secondary-border);
+  box-shadow: var(--shadow-soft);
 }
 .btn-secondary:hover:not(:disabled) {
   border-color: #cfc2e0;
@@ -110,7 +115,7 @@ a:hover {
   color: var(--ink-muted);
 }
 .btn-quiet:hover:not(:disabled) {
-  background: #f0ece4;
+  background: var(--quiet-hover);
   color: var(--ink);
 }
 
@@ -118,7 +123,7 @@ a:hover {
 .input,
 .textarea {
   width: 100%;
-  background: rgba(255, 255, 252, 0.78);
+  background: var(--input-bg);
   color: var(--ink);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
@@ -175,8 +180,8 @@ a:hover {
 }
 .badge-success {
   color: var(--success);
-  border-color: #add3b9;
-  background: #eef9ee;
+  border-color: var(--badge-success-border);
+  background: var(--badge-success-bg);
 }
 .badge-warning {
   color: var(--warning);
@@ -198,7 +203,7 @@ a:hover {
   border: 1px solid var(--line);
   font-size: var(--text-body);
   color: var(--ink-muted);
-  background: rgba(255, 255, 252, 0.7);
+  background: var(--input-bg);
 }
 .banner-error {
   border-color: var(--error);
