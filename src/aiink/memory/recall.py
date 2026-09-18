@@ -10,7 +10,7 @@
 为纯关系召回，不阻塞生成（§6.12 数据层）。
 
 混合召回（§7.2/§16，2026-08-12 落地）：事件级双路——向量腿（level=event）
-+ 关键词腿（出场人物名对事件摘要 ILIKE），RRF 融合排序；两腿独立降级。
++ 关键词腿（本章计划的场景人物/地点名对事件摘要 ILIKE），RRF 融合排序；两腿独立降级。
 recall_stats 上报召回占比（§16 工程评测）+ 各腿状态（ok/disabled/failed/empty/
 no_terms/enabled_but_empty）与 degrade_reason：默认 EMBED_ENABLED=0 下向量腿是
 「关闭」而不是「故障」，且「开关打开但索引为空」这一静默空转必须能看出来。
@@ -105,6 +105,30 @@ def _chapter_scene_names(session: Session, project_id: uuid.UUID, chapter_seq: i
         if names:
             return names
     return set()
+
+
+def _chapter_keyword_terms(session: Session, project_id: uuid.UUID, chapter_seq: int) -> list[str]:
+    """关键词腿术语源：本章计划（缺则上一章）的场景参与人与地点名（§11 逐章计划）。
+
+    回退规则与 _chapter_scene_names 一致。**必须走计划而不是调用方传的 participants**：
+    那是 get_all_characters 按姓名排序的前 12 人（nodes.node_recall），与本章出场无关，
+    拿它做 ILIKE 等于一直在检索不相干的人名。计划里 scene 的 participants 是人名、
+    location_id 是地点名（同为 LLM 直出产物，非 UUID）。
+    """
+    for seq in ([chapter_seq, chapter_seq - 1] if chapter_seq > 1 else [chapter_seq]):
+        outline = repo.get_chapter_outline(session, project_id, seq)
+        plan = (outline.plan if outline else None) or {}
+        terms: list[str] = []
+        for s in (plan.get("scenes") or []):
+            if not isinstance(s, dict):
+                continue
+            terms.extend(str(p).strip() for p in (s.get("participants") or []) if str(p or "").strip())
+            loc = str(s.get("location_id") or "").strip()
+            if loc:
+                terms.append(loc)
+        if terms:
+            return terms
+    return []
 
 
 def _setting_snapshots(session: Session, project_id: uuid.UUID, chapter_seq: int,
@@ -288,7 +312,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     # ——补充关键词命中漏掉的呼应/重复素材；失败降级（模型未装/加载失败都不阻断）。
     if prev and prev.summary:
         recall_stats = _hybrid_recall(session, project_id, prev.summary, participants,
-                                      events_out, facts_out)
+                                      chapter_seq, events_out, facts_out)
     else:
         # 第 1 章没有前章摘要可作 query，且 before_chapter=1 让近期事件同样为空——这是设计
         # 如此（靠世界观 + 硬约束 + 大纲开场）。显式标注，便于区分「按设计没有」与「通道瘫了」。
@@ -333,12 +357,12 @@ def _esc_like(s: str) -> str:
     return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _terms(participants: list[str] | None) -> list[str]:
-    """关键词腿术语：出场人物名（≥2 字符、去重、cap 12）。None/空 → []（腿空降级）。"""
-    if not participants:
+def _terms(names: list[str] | None) -> list[str]:
+    """术语归一：≥2 字符、去重、cap 12。None/空 → []（腿空降级）。"""
+    if not names:
         return []
     out: list[str] = []
-    for name in participants:
+    for name in names:
         name = str(name or "").strip()
         if len(name) < 2 or name in out:
             continue
@@ -386,9 +410,11 @@ def _est_tokens(text: str) -> int:
 
 
 def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
-                   participants: list[str] | None,
+                   participants: list[str] | None, chapter_seq: int,
                    events_out: list[dict], facts_out: list[dict]) -> dict:
-    """事件混合召回（§7.2/§16）：向量腿（level=event）+ 关键词腿（人物名 ILIKE），RRF 融合。
+    """事件混合召回（§7.2/§16）：向量腿（level=event）+ 关键词腿（本章计划场景人物/地点名 ILIKE），RRF 融合。
+
+    关键词腿的术语优先取本章计划（_chapter_keyword_terms），取不到计划才回退 participants。
 
     返回 recall_stats（§16 召回 token 占比 + 各腿运行状态）。任一条腿失败单独降级；
     双腿都没产出排序输入 → events_out 原样（纯关系召回兜底），但**仍返回带状态的
@@ -434,7 +460,7 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
             logger.info("向量召回已禁用（EMBED_ENABLED=0），本次按关键词腿/纯关系降级运行")
 
     try:
-        terms = _terms(participants)
+        terms = _terms(_chapter_keyword_terms(session, project_id, chapter_seq) or participants)
         if not terms:
             keyword_status = "no_terms"
         else:
