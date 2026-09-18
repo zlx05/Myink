@@ -244,7 +244,7 @@ class RetrievedContext(BaseModel):
     entity_snapshots: list[dict] = Field(default_factory=list, description="人物/势力/地点当前状态快照")
     setting_snapshots: list[dict] = Field(default_factory=list, description="设定实体快照（物品/功法/地点，entities 表 §7.11 ④ 自动建档）[{entity_id, entity_type, name, description, first_seen_chapter}]")
     open_foreshadows: list[dict] = Field(default_factory=list, description="开放伏笔 [{description, trigger, planted_chapter, status}]（§7.9，plan_chapter 消费决定收/延/弃）")
-    plot_threads: list[dict] = Field(default_factory=list, description="活跃剧情线 [{name, kind, status, progress}]（线程债务治理输入）")
+    plot_threads: list[dict] = Field(default_factory=list, description="活跃剧情线 [{name, kind, status, last_progress_chapter}]（线程债务治理输入）")
     reflexions: list[dict] = Field(default_factory=list, description="本书写作经验（reflexion 注入，§8.9）[{content, lesson_type, category, source_chapter}]")
     token_usage: int = 0
     recall_stats: dict = Field(default_factory=dict,

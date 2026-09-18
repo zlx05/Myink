@@ -16,7 +16,8 @@ flowchart TD
     subgraph CHAP["单章子图 ×N（循环）"]
         direction TB
         LS --> RC[recall]
-        RC --> PC[plan_chapter]
+        RC --> CAST[plan_cast<br/>先定出场人物/场景]
+        CAST --> PC[plan_chapter]
         PC --> PG{{plan_gate}}
         PG -- "自动模式：展示后直通" --> W[write]
         PG -- "手动模式：awaiting_plan" --> HUMANPLAN[前端编辑/确认 Plan]
@@ -27,7 +28,7 @@ flowchart TD
         AU --> RT{{route_after_audit<br/>混合路由：规则层优先}}
         RT -- "pass" --> PERSIST[persist<br/>低风险自动放行]
         RT -- "rewrite → rev < 预算" --> RV[revise] --> EX
-        RT -- "replan_target=chapter" --> PC
+        RT -- "replan_target=chapter" --> RS[reset_replan] --> CAST
         RT -- "rev ≥ 预算 / replan ≥ 预算 → needs_review" --> NR[needs_review]
         NR --> PERSIST
         PERSIST -- "awaiting_review → 暂停批次" --> PAUSE[批次暂停等人工]
@@ -54,9 +55,10 @@ flowchart TD
 | 节点 | 层级 | 类型 | 输入 | 输出 / 副作用 | 用到的工具 |
 |---|---|---|---|---|---|
 | `batch_plan` | 批次 | Planner（LLM） | 当前大纲 / 剧情线 / 伏笔状态 + N | `BatchPlan`：N 章推进蓝图（每章推进目标 / 收伏笔 / 大纲推进段） | `get_plot_status` |
-| `load_state` | 章 | 确定性 | 任务参数（project_id、chapter_seq） | 项目设定、章节计划、前情摘要初始化 | — |
-| `recall` | 章 | 确定性 | 设定 + 前情 | `RetrievedContext`（分层召回 + token 预算 + `recall_stats` 召回占比） | `search_world_facts` / `search_plot_events` / `get_entity_relations` / `get_chapter_context` |
-| `plan_chapter` | 章 | Planner（LLM） | `RetrievedContext` + 本章在 BatchPlan 的目标 | `ChapterPlan` | — |
+| `load_state` | 章 | 确定性 | 任务参数（project_id、chapter_seq） | 项目设定 / 文风档案 / 题材包 / 字数目标 / 全量角色名单；并**重置上次尝试的瞬态标记**（error、needs_review、persisted、unresolved、revision_count、replan_count…）——同 thread 续跑时 LangGraph 合并 checkpoint，残留标记会让 write/extract 短路重蹈失败 | — |
+| `recall` | 章 | 确定性 | 设定 + 前情 | `RetrievedContext` 的**宽部分**（与出场人物无关：硬约束、前情摘要、近期章头）+ token 预算 + `recall_stats` 召回占比；窄部分（人物状态快照 / 设定实体 / 事件术语）依赖出场名单，由 `plan_cast` 重取时补齐 | `search_world_facts` / `search_plot_events` / `get_entity_relations` / `get_chapter_context` |
+| `plan_cast` | 章 | Planner（LLM） | 宽部分 `RetrievedContext` + 全量角色名单 + 大纲切片 | `ChapterCast`（`cast` 出场人物 / `locations` 场景地点）；**据此重取召回上下文**——人物状态快照、设定实体相关度、事件混合召回术语三处都依赖出场名单（此前只能拿按姓名排序的前 12 人），并带回 `replan_feedback` | — |
+| `plan_chapter` | 章 | Planner（LLM） | `plan_cast` 重取后的 `RetrievedContext` + `ChapterCast` + 本章在 BatchPlan 的目标 | `ChapterPlan` | — |
 | `plan_gate` | 章 | 确定性 + LangGraph interrupt | `ChapterPlan` + `writing_mode` | 自动模式直通；手动模式进入 `awaiting_plan`，作者可编辑后以 `Command(resume=approved_plan)` 从同一 checkpoint 继续，不重跑 Planner；replan 产生的新版本会再次确认 | — |
 | `write` | 章 | Writer（LLM） | `RetrievedContext` + `ChapterPlan` | `draft`（章节草稿） | `inspect_character` / `inspect_facts`（只读查证，§10） |
 | `extract` | 章 | Memory（LLM） | `draft` + `ChapterPlan` | `MutationCandidate[]` 写入待确认池（自动模式：低风险自动放行，§6.11） | `save_memory_candidates` |
@@ -144,7 +146,7 @@ route_after_chapter(batch):
 
 ```text
 确定性节点（非 LLM）：load_state / recall / persist / 状态桥 / reflexion（确定性编排部分）/ global_audit（确定性编排部分）/ batch_end —— validate 节点从 2026-08-13 起不再纯确定性：`ValidationService.validate`（L1 规则层）仍零 LLM，但 `node_validate` 叠加 L2 正文-台账语义比对（`validator_l2` LLM，判定集预滤 + 本地守卫，见上表 validate 行）
-LLM Agent：batch_plan + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / validate 节点的 L2 语义比对（validator_l2）/ reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移 + 桥段重复 + 文风漂移抽样判定，§8.6）
+LLM Agent：batch_plan + plan_cast + plan_chapter(Planner) / write(Writer) / extract(Memory) / audit(审核中枢 Audit) / validate 节点的 L2 语义比对（validator_l2）/ reflexion 复盘 Agent（提炼总结演化）/ 全局审计 Agent（人设漂移 + 桥段重复 + 文风漂移抽样判定，§8.6）
 角色（非独立 agent）：revise —— 复用 Writer 模型，与 Audit 分离保证审核报告纯净可审计
 ```
 

@@ -65,6 +65,11 @@
 
 ## 3. ChapterPlan — 章节计划（规划 agent 输出）
 
+> 规划分**两拍**：`plan_cast` 先出 `ChapterCast`（谁出场、在哪），据此重取召回上下文，
+> `plan_chapter` 再出下面的 `ChapterPlan`。两拍之间不是「先草后细」，而是解开
+> 「取人物状态需要出场人物、而出场人物本是规划产物」这个循环——第一拍只认名字不认状态。
+> 拓扑见 [state-flow.md §1](state-flow.md)。
+
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -116,6 +121,25 @@
   }
 }
 ```
+
+### 3a. ChapterCast — 出演名单（规划第一拍 `plan_cast` 输出）
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ChapterCast",
+  "type": "object",
+  "required": ["cast"],
+  "properties": {
+    "cast":      { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "本章出场人物名，须优先取自现有角色名单（名单外的名字在重取台账时会被静默跳过，这一拍就白跑了）" },
+    "locations": { "type": "array", "items": { "type": "string" }, "description": "本章场景地点名，优先取自已有设定实体（location）" }
+  }
+}
+```
+
+`cast` 是**必填且非空**（`minItems: 1`）——空名单没有意义，直接透传 error 而不写入半成品状态。
+`locations` 可以为空（单场景或地点未定的章）。这份名单随后作为 `participants` / `scene_names`
+喂给 `build_context`，决定三件事：人物状态快照取谁、设定实体的相关度排序、事件混合召回的关键词腿术语。
 
 ## 4. Event — 剧情事件（中期记忆）
 
@@ -303,7 +327,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RetrievedContext",
   "type": "object",
-  "required": ["long_term_facts", "mid_term_events", "short_context", "entity_snapshots", "token_usage"],
+  "required": ["long_term_facts", "mid_term_events", "short_context", "recent_openings", "entity_snapshots", "setting_snapshots", "open_foreshadows", "plot_threads", "reflexions", "token_usage"],
   "properties": {
     "long_term_facts":  { "type": "array", "items": { "type": "object", "properties": { "fact_id": { "type": "string" }, "source_chapter": { "type": "integer" } } } },
     "mid_term_events":  { "type": "array", "items": { "type": "object", "properties": { "event_id": { "type": "string" }, "chapter": { "type": "integer" }, "confidence": { "type": "number" }, "recalled_by": { "type": "string", "description": "混合召回标签：vector / keyword / vector+keyword（仅混合召回补充的事件有）" } } } },
@@ -311,12 +335,44 @@
     "recent_openings":  { "type": "array", "items": { "type": "object" }, "description": "最近 4 个历史章开头 [{chapter, text}]；仅供差异化比较，不作接续位置" },
     "entity_snapshots": { "type": "array", "items": { "type": "object" }, "description": "人物/势力/地点当前状态快照（台账最新）：character_id / name / realm_cap / state / state_changes / personality / relations；state_changes 为 {field: {old, chapter}}，只收旧值非空且与新值不同的真实跃迁（否则会把没变的字段也渲染成一堆伪变化）" },
     "setting_snapshots":{ "type": "array", "items": { "type": "object" }, "description": "设定实体快照（§7.11 ④ 物品/功法/地点，entities 表）：entity_id / entity_type / name / description / first_seen_chapter；按本章场景地点名相关度取样，上限 12 条。注入 plan/write/audit，**不注入 extract**——extract 的台账快照块用于校准 character_state.old_value 与 relation_change 候选，掺入非人物行会招来假候选" },
+    "open_foreshadows": { "type": "array", "items": { "type": "object" }, "description": "开放伏笔（§7.9）：foreshadow_id / description / trigger / planted_chapter / status；plan_chapter 消费它决定收/延/弃（hooks_to_resolve 必须从中选）" },
+    "plot_threads":     { "type": "array", "items": { "type": "object" }, "description": "活跃剧情线（§8.8 线程债务治理）：name / kind / status / last_progress_chapter；闲置时长是**派生量**（末次推进章与当前章现算），不落列" },
     "reflexions":       { "type": "array", "items": { "type": "object" }, "description": "在效写作经验（§8.9 reflexion）：content / lesson_type / category / source_chapter；上限 8 条" },
     "token_usage":      { "type": "integer" },
     "recall_stats":     { "type": "object", "description": "事件混合召回占比（§7.2/§16，2026-08-12 落地）：{ vector_hits, keyword_hits, fused_total, recall_tokens_est, context_tokens_est, share }；无混合召回时为空对象 {}" }
   }
 }
 ```
+
+### 分层与注入（单一真源 = `context_budget.MEMORY_LAYERS` / `NODE_INJECTIONS`）
+
+「哪块记忆属于哪一层、超预算先丢谁、进哪个节点」由 `src/aiink/context_budget.py` 的
+`MEMORY_LAYERS` 与 `NODE_INJECTIONS` 两个常量声明，`fit_prompt` 的裁剪从表派生。下面这张
+表是它的镜像——**改代码请先改常量**，`tests/test_memory_layers.py` 会断言二者与实际注入
+面一致（漂移即红）。
+
+| 记忆块 | 层 | 可丢 | 裁剪序 | 注入节点 |
+|---|---|---|---|---|
+| `long_term_facts` | 长期 | 是（`is_hard` 行除外） | 0（最先） | plan_cast / plan_chapter / write / revise / audit |
+| `mid_term_events` | 中期 | 是 | 1 | plan_cast / plan_chapter / audit |
+| `reflexions` | 长期 | 是 | 2 | plan_chapter / write / revise |
+| `plot_threads` | 中期 | 是 | 3 | plan_cast / plan_chapter / audit |
+| `open_foreshadows` | 中期 | 是 | 4 | plan_cast / plan_chapter / extract / audit |
+| `recent_openings` | 短期 | 是 | 5 | plan_cast / plan_chapter / write / revise / audit |
+| `setting_snapshots` | 设定侧 | 是 | 6 | plan_cast / plan_chapter / write / revise / audit |
+| `entity_snapshots` | 设定侧 | 是 | 7（最后） | plan_chapter / write / revise / extract / audit |
+| `short_context` | 短期 | **否** | — | plan_cast / plan_chapter / write / revise / extract\* / audit |
+
+\* extract 只取 `short_context` 里 `kind` 为 `author_review` / `user_instruction` 的行（作者评审意见与指令），
+其余短上下文不进抽取。`summarize` 只吃正文，不注入任何召回上下文。
+
+两处**有意的不对称**，别当遗漏补上：
+
+- **`write` 不注入 `mid_term_events` / `open_foreshadows` / `plot_threads`**——它在 `plan_chapter`
+  之后跑，这三块已由章节计划承接（计划里写明本章推进哪条线、收哪个伏笔），再注一遍是重复计费。
+- **`plan_cast` 不注入 `entity_snapshots` 与 `reflexions`**——这一拍只决定「谁出场、在哪」，
+  依据是角色名单 + 设定实体；台账快照恰是本拍**之后**才去取的东西（鸡生蛋），而 `reflexions`
+  是节奏/伏笔类技法建议，可执行点在 `plan_chapter` 与 `write`。
 
 ---
 
