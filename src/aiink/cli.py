@@ -14,7 +14,8 @@ import uuid
 import typer
 from rich.console import Console
 from rich.table import Table
-from sqlalchemy import text
+from sqlalchemy import select, text
+from sqlalchemy.orm import Session
 
 from aiink.db import get_engine, tenant_session
 from aiink.models import Base
@@ -167,6 +168,75 @@ def export() -> None:
     # ASCII 输出（✓ 在 GBK 控制台会 UnicodeEncodeError，见 scripts/ci-local.sh 同款修复）
     console.print(f"[green]OK[/] OpenAPI 契约已导出"
                   f"（{len(app.openapi()['paths'])} 条路径）：{spec_path}")
+
+
+def _count_embeddings(db: Session, pid: uuid.UUID, level: str) -> set[uuid.UUID]:
+    from aiink.models import EmbeddingRow
+
+    return {row[0] for row in db.execute(
+        select(EmbeddingRow.source_id).where(
+            EmbeddingRow.project_id == pid, EmbeddingRow.level == level)).all()}
+
+
+def _backfill_embeddings(db: Session, pid: uuid.UUID, level: str) -> int:
+    """为本书缺失向量的源行补建索引，返回**核实已落库**的新建条数（幂等：已有的跳过）。
+
+    返回的是回填后再查一次的实际行数而非尝试次数：_index_embedding 内部吞异常降级，
+    只数尝试次数会报出一个什么都没建成的成功数字——正是本次审计要消灭的静默空转。
+    硬约束不向量化（§7.2 恒在 Top-K、不参与相似度截断）。
+    """
+    from aiink.models import Event, Fact
+    from aiink.workflow.nodes import _index_embedding
+
+    have = _count_embeddings(db, pid, level)
+    if level == "event":
+        rows = db.execute(select(Event).where(Event.project_id == pid)).scalars()
+        todo = [(r.id, r.source_chapter, r.summary) for r in rows]
+    else:
+        rows = db.execute(select(Fact).where(
+            Fact.project_id == pid, Fact.is_hard.is_(False))).scalars()
+        todo = [(r.id, r.source_chapter, r.content) for r in rows]
+    todo = [(sid, seq, txt) for sid, seq, txt in todo if (txt or "").strip() and sid not in have]
+    for source_id, source_chapter, txt in todo:
+        _index_embedding(db, project_id=pid, level=level, source_id=source_id,
+                         source_chapter=source_chapter, text=txt)
+    db.flush()  # 让本次 add 的行能被下面的核实查询看到
+    return len({sid for sid, _, _ in todo} & _count_embeddings(db, pid, level))
+
+
+@app.command("embed-backfill")
+def embed_backfill(project: str | None = None, level: str = "event") -> None:
+    """为缺失向量的历史事件/非硬约束事实补建索引（§15 最小向量召回）。
+
+    默认 EMBED_ENABLED=0 时向量腿本就是「关闭」，索引为空看不出异常；开关打开后必须
+    跑一次本命令，否则召回静默退化为纯关键词（recall_stats 报 enabled_but_empty）。
+    幂等可重跑：已建过的源行跳过。
+    """
+    from aiink.config import settings
+    from aiink.models import Project
+
+    from aiink.db import new_session
+
+    if level not in ("event", "world"):
+        console.print("[red]level 只能是 event 或 world[/]")
+        raise typer.Exit(1)
+    if not settings.embed_enabled:
+        console.print("[red]EMBED_ENABLED=0：向量化关闭，回填不会产生任何索引[/]")
+        raise typer.Exit(1)
+
+    with new_session() as db:  # projects 是租户根表、无 RLS，可跨书枚举
+        pids = [str(p) for p in db.execute(select(Project.id)).scalars()]
+    if project:
+        if project not in pids:
+            console.print(f"[red]项目不存在：{project}[/]")
+            raise typer.Exit(1)
+        pids = [project]
+
+    added = 0
+    for pid in pids:
+        with tenant_session(pid) as db:
+            added += _backfill_embeddings(db, uuid.UUID(pid), level)
+    console.print(f"[green]OK[/] 扫描 {len(pids)} 本书，补建 {added} 条 {level} 向量")
 
 
 if __name__ == "__main__":

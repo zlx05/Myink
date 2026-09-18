@@ -43,12 +43,16 @@ class PgvectorStore(VectorStore):
     def upsert(self, session: Session, *, project_id: uuid.UUID, level: str,
                source_id: uuid.UUID, source_chapter: int | None,
                model_version: str, embedding: list[float]) -> None:
-        row = EmbeddingRow(
+        # 幂等：embeddings 没有 (project_id, level, source_id) 唯一约束，重复索引会留下
+        # 重复行——同一事件在向量腿里被重复计数、挤占 Top-K（回填命令必须能重跑）。
+        # 先 flush 再删：同会话内已 add 未落库的同键行也要一并清掉，否则删不到。
+        session.flush()
+        self.delete(session, project_id=project_id, level=level, source_id=source_id)
+        session.add(EmbeddingRow(
             project_id=project_id, level=level, source_id=source_id,
             source_chapter=source_chapter, model_version=model_version,
             embedding=embedding,
-        )
-        session.add(row)
+        ))
 
     def search(self, session: Session, *, project_id: uuid.UUID, level: str | None,
                embedding: list[float], top_k: int = 20) -> list[tuple[uuid.UUID, float]]:

@@ -91,7 +91,7 @@ SKIP_IMAGES=1 bash scripts/ci-local.sh
 
 预算覆盖章节规划、写作、抽取、审核及章节节点的模型调用。整书规划、批次复盘、全局审计等独立调用尚未统一到这一预算，不能宣称全系统所有请求均限制在 12k。
 
-Compose 默认 `EMBED_ENABLED=0`，关闭向量腿但仍可使用关系与关键词召回。启用需将 Dockerfile 安装改为 `pip install .[ml]`，重建镜像，并给 API/worker 配置 `EMBED_ENABLED=1`、首次下载时 `EMBED_ALLOW_DOWNLOAD=1`，持久化模型缓存。本地 embedding 会额外占用内存与磁盘。
+Compose 默认 `EMBED_ENABLED=0`，关闭向量腿但仍可使用关系与关键词召回。启用需将 Dockerfile 安装改为 `pip install .[ml]`，重建镜像，并给 API/worker 配置 `EMBED_ENABLED=1`、首次下载时 `EMBED_ALLOW_DOWNLOAD=1`，持久化模型缓存。本地 embedding 会额外占用内存与磁盘。开关只对新写入生效，存量事件的向量要另跑一次 `aiink embed-backfill --level event`（事实用 `--level world`，`--project` 可限定单本）补建；否则向量腿索引为空，召回静默退化成纯关键词，`recall_stats.vector_status` 会显示 `enabled_but_empty`。该命令幂等，可重复执行。
 
 ## 仍需完成的生产工作
 
