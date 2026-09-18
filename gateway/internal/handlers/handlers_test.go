@@ -1049,6 +1049,34 @@ func TestSSEReplayContinuesPastHistoricalTerminal(t *testing.T) {
 	}
 }
 
+func TestSSEStreamExpiredReturns410(t *testing.T) {
+	r := newTestRedis(t)
+	py := pyapi.New(fakePy().URL, 3*time.Second)
+	router := newRouter(t, r, py)
+
+	// 任务终态且流已过期（键不存在）。必须在写响应头之前判定：响应头一旦 Flush 就
+	// 提交了 200，此后的 410 只能落进 body，浏览器读成 eof 后无限重连 → 写按钮永久禁用。
+	taskID := "sse-expired-task"
+	ctx := context.Background()
+	_ = r.Raw().Del(ctx, "queue:sse:"+taskID).Err()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/"+taskID+"/events", nil)
+	req.Header.Set("Authorization", bearer(t, "dev"))
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusGone {
+		t.Fatalf("流已过期应 410，实际 %d body=%s", w.Code, w.Body.String())
+	}
+	// Content-Type 是 JSON 而非 text/event-stream，正好证明响应头未被提前提交
+	if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+		t.Fatalf("410 应为 JSON（响应头未提交），实际 %q", ct)
+	}
+	if !strings.Contains(w.Body.String(), "sse_stream_expired") {
+		t.Fatalf("应提示流过期回退快照，实际 %s", w.Body.String())
+	}
+}
+
 // ---- JWT 身份断言（§14.1 ③：网关验签第一道门，替换 X-AiInk-User 占位）----
 
 func TestAuthTokenForwardsToPython(t *testing.T) {

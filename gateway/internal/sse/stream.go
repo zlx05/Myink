@@ -27,6 +27,16 @@ const (
 // StreamKey 返回指定任务的 SSE 通道 key。
 func StreamKey(taskID string) string { return StreamPrefix + taskID }
 
+// StreamExists 判断任务的 SSE 通道当前是否存在。网关必须在写任何响应头之前预检：
+// 响应头一旦 Flush 就提交了 200，此后的 410 只能落进 body（浏览器读成 eof 后无限重连）。
+func StreamExists(ctx context.Context, r *redis.Client, taskID string) (bool, error) {
+	n, err := r.Raw().Exists(ctx, StreamKey(taskID)).Result()
+	if err != nil {
+		return false, err
+	}
+	return n > 0, nil
+}
+
 // Event 是 SSE 帧的载体（对应 worker 侧 XADD 的 fields）。
 type Event struct {
 	ID         string `json:"id"`
@@ -54,11 +64,11 @@ var ErrStreamGone = fmt.Errorf("sse 通道不存在")
 // 返回 ErrStreamGone 表示通道已不存在。
 func Replay(ctx context.Context, r *redis.Client, taskID, afterID string, send func(Event) error) (string, error) {
 	key := StreamKey(taskID)
-	exists, err := r.Raw().Exists(ctx, key).Result()
+	exists, err := StreamExists(ctx, r, taskID)
 	if err != nil {
 		return afterID, err
 	}
-	if exists == 0 {
+	if !exists {
 		return afterID, ErrStreamGone
 	}
 	// XRANGE 起点默认包含自身；用 '(' 做严格大于，避免重连时重复上一帧。

@@ -264,23 +264,43 @@ export function useTaskEvents(
               setPhase('terminal')
               return
             }
-          case 'expired':
-            // 流过期（Redis key 被裁剪）→ 回退 GET 快照
+          case 'expired': {
+            // 流被裁剪（Redis key 过期）→ 回退 GET 快照。但任务可能仍在跑：worker 若
+            // 长时间无事件，key 会先过期而任务尚未落终态。此时不能直接收尾，因为
+            // 'expired' 不在在途判定里，写按钮会在任务进行中被放出来造成重复提交。
+            const snapshotStatus = await fetchSnapshot(tid)
+            if (controller.signal.aborted) return
+            if (snapshotStatus && !TERMINAL_STATUSES.has(snapshotStatus)) {
+              setPhase('reconnecting')
+              attempt += 1
+              const delay = Math.min(8000, 1000 * 2 ** Math.min(attempt - 1, 3))
+              await new Promise((resolve) => setTimeout(resolve, delay))
+              continue
+            }
             setPhase('expired')
-            void fetchSnapshot(tid)
             return
+          }
           case 'unauthorized':
             // token.ts 已派发 401 登出事件，路由守卫自动跳登录
             setPhase('error')
             return
           case 'network':
-          case 'eof':
-            // 未达终态但流结束 → 指数退避重连（last_event_id 追平）
+          case 'eof': {
+            // 流结束但未达终态。存在两种成因：任务仍在跑（正常断线），或 Redis 流还在
+            // 而 worker 已死、终态帧永不到达（网关 30min 硬超时后才 EOF）。先核对快照
+            // 区分二者：已是终态就地收尾，否则退避重连（重连兼作低频状态轮询兜底）。
+            const snapshotStatus = await fetchSnapshot(tid)
+            if (controller.signal.aborted) return
+            if (snapshotStatus && TERMINAL_STATUSES.has(snapshotStatus)) {
+              setPhase('terminal')
+              return
+            }
             setPhase('reconnecting')
             attempt += 1
             const delay = Math.min(8000, 1000 * 2 ** Math.min(attempt - 1, 3))
-            await new Promise((r) => setTimeout(r, delay))
+            await new Promise((resolve) => setTimeout(resolve, delay))
             continue
+          }
           case 'error':
           case 'aborted':
             setPhase('error')

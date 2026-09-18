@@ -254,3 +254,41 @@ it('keeps following a resumed task when SSE first replays an old review terminal
   expect(result.current.status).toBe('done')
   expect(api.getTask).toHaveBeenCalledTimes(3)
 })
+
+it('stops reconnecting and adopts the snapshot when the stream eofs on a finished task', async () => {
+  // 流键仍存在（网关不会回 410）但 worker 已死：终态帧永不到达，网关 30min 硬超时后才 EOF。
+  // 此前该分支只退避重连、从不查快照，phase 永远停在 reconnecting → 写按钮永久禁用。
+  vi.mocked(api.getTask).mockResolvedValue({
+    task_id: 'dead-worker-task', task_type: 'chapter_generate', status: 'done',
+    payload: { seq: 9 }, error: null, retry_count: 0, trace_id: null,
+    chapter_seq: 9, batch_task_id: null, created_at: null, cost_total: 0.01,
+    runs: [{ task_id: 'dead-worker-task', node: 'write', model_id: 'stub', input_tokens: 10,
+      output_tokens: 20, cache_hit: false, duration_ms: 100, cost_est: 0.01,
+      retry_count: 0, degraded: false, error: null, detail: null }],
+  })
+  vi.mocked(openSSE).mockResolvedValue({ reason: 'eof' })
+
+  const { result } = renderHook(() => useTaskEvents('dead-worker-task'))
+
+  await waitFor(() => expect(result.current.phase).toBe('terminal'))
+  expect(result.current.status).toBe('done')
+  // 已完结任务的 run 历史必须仍然可回看，不能被这次收尾清掉
+  await waitFor(() => expect(result.current.runs.map((run) => run.node)).toEqual(['write']))
+})
+
+it('keeps reconnecting when the stream expired but the task is still running', async () => {
+  // 任务存活却 >1h 无事件 → 流键先被裁掉。不能就此置成 expired：'expired' 不在在途判定
+  // 里，写按钮会在任务进行中被放出来，造成重复提交。
+  vi.mocked(api.getTask).mockResolvedValue({
+    task_id: 'slow-task', task_type: 'chapter_generate', status: 'running',
+    payload: { seq: 11 }, error: null, retry_count: 0, trace_id: null,
+    chapter_seq: 11, batch_task_id: null, created_at: null, cost_total: 0, runs: [],
+  })
+  vi.mocked(openSSE).mockResolvedValue({ reason: 'expired' })
+
+  const { result } = renderHook(() => useTaskEvents('slow-task'))
+
+  await waitFor(() => expect(result.current.phase).toBe('reconnecting'))
+  await waitFor(() => expect(openSSE).toHaveBeenCalledTimes(2), { timeout: 3000 })
+  expect(result.current.phase).toBe('reconnecting')
+})

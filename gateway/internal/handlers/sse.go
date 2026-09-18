@@ -37,6 +37,14 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 	}
 	after = sse.ParseLastEventID(after)
 
+	// 先探测通道再决定响应。响应头一旦 Flush 即提交 200，此后的 410 只会落进 body
+	// （浏览器读成 eof → 无限重连 → 写按钮永久禁用）。预检自身出错（Redis 抖动）
+	// 不阻断，照常走 Subscribe，避免把抖动谎报成「流已过期」。
+	if exists, err := sse.StreamExists(c.Request.Context(), h.r, taskID); err == nil && !exists {
+		c.AbortWithStatusJSON(http.StatusGone, gin.H{"error": "sse_stream_expired", "hint": "fallback_get_snapshot"})
+		return
+	}
+
 	// 强制响应头：SSE 必须 text/event-stream + 关缓冲
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
