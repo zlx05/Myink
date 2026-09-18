@@ -12,6 +12,8 @@
   影响面流程，避免无影响面分析直接改基底）；
 - GET /projects/{pid}/world：世界观浏览（world_rules + hard_constraints + 势力/地点）；
 - GET /projects/{pid}/characters：人物卡片浏览（静态基底 + 当前状态台账 §7.7）；
+- GET /projects/{pid}/events：事件台账（§7.4 中期记忆全量，可按章区间过滤；participants 翻人名）；
+- GET /projects/{pid}/characters/{cid}/state-history：人物状态变化历史（§7.7 追加式全量，含已失效行）；
 - GET /projects/{pid}/graph：世界拓扑全量（4 类节点 + 人物关系/地点层级边，§9 图谱前端）。
 
 与 §7.11 权威模型一致：agent 只提案、用户确认是唯一 canon；确认 = 编排层写库入口
@@ -29,17 +31,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete as sa_delete, func
 
 from aiink.api.auth import current_user, require_owner
-from aiink.api.schemas import (BookOutlineOut, CharacterCardOut, DeleteProjectOut,
-                               EntityCardOut, ForeshadowOut, OutlineDraftOut, ProjectOut,
-                               SetupConfirmOut, SetupDraftOut, WorldGraphOut, WorldViewOut)
+from aiink.api.schemas import (BookOutlineOut, CharacterCardOut, CharacterStateChangeOut,
+                               DeleteProjectOut, EntityCardOut, ForeshadowOut, OutlineDraftOut,
+                               ProjectOut, SetupConfirmOut, SetupDraftOut, StoryEventOut,
+                               WorldGraphOut, WorldViewOut)
 from aiink.book_setup import generate_book_outline, generate_book_setup
 from aiink.config import settings
 from aiink.genre_catalog import build_book_pack, display_genre, is_managed_pack
 from aiink.db import new_session, tenant_session
 from aiink.memory.repository import (get_all_characters, get_character, get_character_state,
                                      get_settings, get_volume_outline)
-from aiink.models import (AgentRun, Character, Entity, Faction, Foreshadow, Location,
-                          Project, ProjectSettings, Relation, Task, VolumeOutline)
+from aiink.models import (AgentRun, Character, CharacterState, Entity, Event, Faction,
+                          Foreshadow, Location, Project, ProjectSettings, Relation, Task,
+                          VolumeOutline)
 from aiink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 from aiink.workflow.checkpointer import delete_threads
 from aiink.workflow.outline import (CHAPTER_COUNT_MAX, CHAPTER_COUNT_MIN,
@@ -61,6 +65,15 @@ def _str_or_none(value) -> str | None:
         return None
     s = str(value).strip()
     return s or None
+
+
+def _uuid_or_400(raw: str, label: str) -> uuid.UUID:
+    """路径 uuid 参数守卫。require_owner 只校验 project_id，其余路径参数需自校验，
+    否则非法 uuid 会在查库时才炸成 500（同 routes_lessons._lesson_id）。"""
+    try:
+        return uuid.UUID(raw)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"{label}非法: {raw}") from exc
 
 
 class CreateProjectBody(BaseModel):
@@ -488,6 +501,73 @@ def character_cards(project_id: str) -> list[dict]:
                 "state": state,
             })
     return cards
+
+
+@router.get("/projects/{project_id}/events",
+            dependencies=[Depends(require_owner)], response_model=list[StoryEventOut])
+def story_events(project_id: str, from_chapter: int | None = None,
+                 to_chapter: int | None = None) -> list[dict]:
+    """事件台账（§7.4 中期记忆全量：抽取节点落库后此前只写不读）。
+
+    participants 落库存 canonical 人物 id（nodes.py §7.5 归一化），此处整本一次载入
+    人名映射翻成可读名（避免逐条查库），已删角色丢弃。按章号降序——台账回看，最近在前。
+    tenant_session RLS 已按项目隔离，显式 project_id 过滤为双保险（同 entity_cards）。
+    """
+    pid = _pid(project_id)
+    with tenant_session(project_id) as db:
+        q = db.query(Event).filter(Event.project_id == pid)
+        if from_chapter is not None:
+            q = q.filter(Event.source_chapter >= from_chapter)
+        if to_chapter is not None:
+            q = q.filter(Event.source_chapter <= to_chapter)
+        rows = q.order_by(Event.source_chapter.desc(), Event.id).all()
+        names = {str(c.id): c.name
+                 for c in db.query(Character).filter(Character.project_id == pid).all()}
+        return [
+            {
+                "id": str(e.id),
+                "summary": e.summary or "",
+                "participants": [names[m] for m in (e.participants or []) if m in names],
+                "location_id": str(e.location_id) if e.location_id else None,
+                "timeline": e.timeline,
+                "source_chapter": e.source_chapter,
+                "confidence": e.confidence,
+                "promoted_to_fact": bool(e.promoted_to_fact),
+            }
+            for e in rows
+        ]
+
+
+@router.get("/projects/{project_id}/characters/{character_id}/state-history",
+            dependencies=[Depends(require_owner)],
+            response_model=list[CharacterStateChangeOut])
+def character_state_history(project_id: str, character_id: str) -> list[dict]:
+    """人物状态变化历史（§7.7 追加式台账全量，含已失效行）。
+
+    直接读 character_states 原始追加行——get_character_state 按 valid_to 过滤并折叠成
+    {field: new_value}，变化历史（old_value / source_chapter / 置信度）在取数层就丢了。
+    走 ix_character_states_project_char_seq（project_id, character_id, chapter_seq）。
+    """
+    pid = _pid(project_id)
+    cid = _uuid_or_400(character_id, "人物 id")
+    with tenant_session(project_id) as db:
+        rows = db.query(CharacterState).filter(
+            CharacterState.project_id == pid,
+            CharacterState.character_id == cid,
+        ).order_by(CharacterState.chapter_seq).all()
+        return [
+            {
+                "field": r.field,
+                "old_value": r.old_value,
+                "new_value": r.new_value,
+                "chapter_seq": r.chapter_seq,
+                "source_chapter": r.source_chapter,
+                "confidence": r.confidence,
+                "valid_from": r.valid_from,
+                "valid_to": r.valid_to,
+            }
+            for r in rows
+        ]
 
 
 @router.get("/projects/{project_id}/graph",

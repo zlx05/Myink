@@ -512,6 +512,79 @@
         "title": "CharacterCardOut",
         "type": "object"
       },
+      "CharacterStateChangeOut": {
+        "description": "人物状态台账变更单条（§7.7 追加式：old_value → new_value @ 第 N 章）。\n\n直接透出 character_states 原始追加行——含 valid_to 非空的已失效行，\nget_character_state 会把它们过滤并折叠掉。",
+        "properties": {
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          },
+          "new_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New Value"
+          },
+          "old_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old Value"
+          },
+          "source_chapter": {
+            "title": "Source Chapter",
+            "type": "integer"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "field",
+          "chapter_seq",
+          "source_chapter",
+          "confidence"
+        ],
+        "title": "CharacterStateChangeOut",
+        "type": "object"
+      },
       "ConnectionProbeBody": {
         "description": "探针请求：未保存的新连接直接传明文 api_key；已保存连接可只给 connection_id 复用密钥。",
         "properties": {
@@ -2508,6 +2581,67 @@
         "title": "SkillPresetOut",
         "type": "object"
       },
+      "StoryEventOut": {
+        "description": "事件台账单条（§7.4 中期记忆全量：抽取节点落库后此前只写不读）。",
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "location_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Id"
+          },
+          "participants": {
+            "items": {},
+            "title": "Participants",
+            "type": "array"
+          },
+          "promoted_to_fact": {
+            "title": "Promoted To Fact",
+            "type": "boolean"
+          },
+          "source_chapter": {
+            "title": "Source Chapter",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "timeline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeline"
+          }
+        },
+        "required": [
+          "id",
+          "summary",
+          "source_chapter",
+          "confidence",
+          "promoted_to_fact"
+        ],
+        "title": "StoryEventOut",
+        "type": "object"
+      },
       "StyleDraftOut": {
         "properties": {
           "draft": {
@@ -4403,6 +4537,78 @@
         ]
       }
     },
+    "/internal/v1/projects/{project_id}/characters/{character_id}/state-history": {
+      "get": {
+        "description": "人物状态变化历史（§7.7 追加式台账全量，含已失效行）。\n\n直接读 character_states 原始追加行——get_character_state 按 valid_to 过滤并折叠成\n{field: new_value}，变化历史（old_value / source_chapter / 置信度）在取数层就丢了。\n走 ix_character_states_project_char_seq（project_id, character_id, chapter_seq）。",
+        "operationId": "character_state_history_internal_v1_projects__project_id__characters__character_id__state_history_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "character_id",
+            "required": true,
+            "schema": {
+              "title": "Character Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CharacterStateChangeOut"
+                  },
+                  "title": "Response Character State History Internal V1 Projects  Project Id  Characters  Character Id  State History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Character State History",
+        "tags": [
+          "book"
+        ]
+      }
+    },
     "/internal/v1/projects/{project_id}/entities": {
       "get": {
         "description": "设定实体浏览（§7.11 ④ 自动建档：武器/功法/技能/地点低风险自动登记）。\n\n实体是\"存在即登记\"的低冲突注册表（对齐地点自动建档口径）；状态变化仍走状态台账\n（character_state item/power/location），此处只读静态卡。",
@@ -4461,6 +4667,101 @@
           }
         },
         "summary": "Entity Cards",
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/events": {
+      "get": {
+        "description": "事件台账（§7.4 中期记忆全量：抽取节点落库后此前只写不读）。\n\nparticipants 落库存 canonical 人物 id（nodes.py §7.5 归一化），此处整本一次载入\n人名映射翻成可读名（避免逐条查库），已删角色丢弃。按章号降序——台账回看，最近在前。\ntenant_session RLS 已按项目隔离，显式 project_id 过滤为双保险（同 entity_cards）。",
+        "operationId": "story_events_internal_v1_projects__project_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from_chapter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From Chapter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to_chapter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To Chapter"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-AiInk-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Aiink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoryEventOut"
+                  },
+                  "title": "Response Story Events Internal V1 Projects  Project Id  Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Story Events",
         "tags": [
           "book"
         ]

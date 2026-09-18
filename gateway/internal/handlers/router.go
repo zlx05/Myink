@@ -87,6 +87,10 @@ func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Cl
 		secured.GET("/projects/:project_id/characters", taskH.GetCharacters)
 		// 设定实体浏览（§7.11 ④ 自动建档：武器/功法/技能/地点）
 		secured.GET("/projects/:project_id/entities", taskH.ListEntities)
+		// 事件台账（§7.4 中期记忆全量：此前事件只写不读，此路由把台账读出来）
+		secured.GET("/projects/:project_id/events", taskH.ListEvents)
+		// 人物状态变化历史（§7.7 追加式台账全量：old_value → new_value 时间线）
+		secured.GET("/projects/:project_id/characters/:character_id/state-history", taskH.ListCharacterStates)
 		// 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边）
 		secured.GET("/projects/:project_id/graph", taskH.GetGraph)
 		// 伏笔池台账（§7.9 状态机全量，前端设定页伏笔池区块）

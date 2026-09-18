@@ -59,6 +59,8 @@ PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/internal/v1/projects/{project_id}/outline"),
     ("GET", "/internal/v1/projects/{project_id}/world"),
     ("GET", "/internal/v1/projects/{project_id}/characters"),
+    ("GET", "/internal/v1/projects/{project_id}/characters/{character_id}/state-history"),
+    ("GET", "/internal/v1/projects/{project_id}/events"),
     ("GET", "/internal/v1/projects/{project_id}/entities"),
     ("GET", "/internal/v1/projects/{project_id}/graph"),
     ("GET", "/internal/v1/projects/{project_id}/foreshadows"),

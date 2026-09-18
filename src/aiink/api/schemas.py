@@ -411,6 +411,38 @@ class ForeshadowOut(BaseModel):
     related_entities: list = Field(default_factory=list)
 
 
+class StoryEventOut(BaseModel):
+    """事件台账单条（§7.4 中期记忆全量：抽取节点落库后此前只写不读）。"""
+
+    id: str
+    summary: str
+    # participants 落库是 canonical 人物 UUID 字符串（nodes.py §7.5），读出前翻成人名——
+    # 裸 uuid 对前端不可读；已删角色丢弃。
+    participants: list = Field(default_factory=list)
+    location_id: str | None = None
+    timeline: str | None = None
+    source_chapter: int
+    confidence: float
+    promoted_to_fact: bool
+
+
+class CharacterStateChangeOut(BaseModel):
+    """人物状态台账变更单条（§7.7 追加式：old_value → new_value @ 第 N 章）。
+
+    直接透出 character_states 原始追加行——含 valid_to 非空的已失效行，
+    get_character_state 会把它们过滤并折叠掉。
+    """
+
+    field: str
+    old_value: str | None = None
+    new_value: str | None = None
+    chapter_seq: int
+    source_chapter: int
+    confidence: float
+    valid_from: int | None = None
+    valid_to: int | None = None
+
+
 class RankingItemOut(BaseModel):
     """扫榜单条（§10）：外部榜单已 sanitize（allowlist 字段，只作灵感参考）。"""
 

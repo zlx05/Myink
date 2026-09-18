@@ -479,6 +479,21 @@ func (h *TaskHandler) ListEntities(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/entities", nil)
 }
 
+// 事件台账（§7.4 中期记忆全量，可按 from_chapter/to_chapter 过滤，转发 Python API）。
+// GET /api/v1/projects/:project_id/events
+func (h *TaskHandler) ListEvents(c *gin.Context) {
+	pid := c.Param("project_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/events", nil)
+}
+
+// 人物状态变化历史（§7.7 追加式台账全量，含已失效行，转发 Python API）。
+// GET /api/v1/projects/:project_id/characters/:character_id/state-history
+func (h *TaskHandler) ListCharacterStates(c *gin.Context) {
+	pid := c.Param("project_id")
+	cid := c.Param("character_id")
+	h.forwardToPy(c, "/internal/v1/projects/"+pid+"/characters/"+cid+"/state-history", nil)
+}
+
 // 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边，转发 Python API）。
 // GET /api/v1/projects/:project_id/graph
 func (h *TaskHandler) GetGraph(c *gin.Context) {
