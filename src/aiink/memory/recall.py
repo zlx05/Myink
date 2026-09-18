@@ -10,7 +10,7 @@
 为纯关系召回，不阻塞生成（§6.12 数据层）。
 
 混合召回（§7.2/§16，2026-08-12 落地）：事件级双路——向量腿（level=event）
-+ 关键词腿（本章计划的场景人物/地点名对事件摘要 ILIKE），RRF 融合排序；两腿独立降级。
++ 关键词腿（本章出场人名对事件摘要 ILIKE），RRF 融合排序；两腿独立降级。
 recall_stats 上报召回占比（§16 工程评测）+ 各腿状态（ok/disabled/failed/empty/
 no_terms/enabled_but_empty）与 degrade_reason：默认 EMBED_ENABLED=0 下向量腿是
 「关闭」而不是「故障」，且「开关打开但索引为空」这一静默空转必须能看出来。
@@ -88,67 +88,21 @@ def _tail_of(content: str | None) -> str:
     return tail
 
 
-def _chapter_scene_names(session: Session, project_id: uuid.UUID, chapter_seq: int) -> set[str]:
-    """本章计划里的场景地点名（§11 逐章计划）；本章取不到计划则回退上一章。
-
-    plan["scenes"][*]["location_id"] 存的是地点**名**不是 uuid（章节计划 schema），
-    可直接与 Entity.canonical_name 比对。重写本章时本章计划已落库；首次生成时只有上一章。
-    """
-    for seq in ([chapter_seq, chapter_seq - 1] if chapter_seq > 1 else [chapter_seq]):
-        outline = repo.get_chapter_outline(session, project_id, seq)
-        plan = (outline.plan if outline else None) or {}
-        names = {
-            str(s.get("location_id")).strip()
-            for s in (plan.get("scenes") or [])
-            if isinstance(s, dict) and s.get("location_id")
-        }
-        if names:
-            return names
-    return set()
-
-
-def _chapter_keyword_terms(session: Session, project_id: uuid.UUID, chapter_seq: int) -> list[str]:
-    """关键词腿术语源：本章计划（缺则上一章）的场景参与人与地点名（§11 逐章计划）。
-
-    回退规则与 _chapter_scene_names 一致。**必须走计划而不是调用方传的 participants**：
-    那是 get_all_characters 按姓名排序的前 12 人（nodes.node_recall），与本章出场无关，
-    拿它做 ILIKE 等于一直在检索不相干的人名。计划里 scene 的 participants 是人名、
-    location_id 是地点名（同为 LLM 直出产物，非 UUID）。
-    """
-    for seq in ([chapter_seq, chapter_seq - 1] if chapter_seq > 1 else [chapter_seq]):
-        outline = repo.get_chapter_outline(session, project_id, seq)
-        plan = (outline.plan if outline else None) or {}
-        terms: list[str] = []
-        for s in (plan.get("scenes") or []):
-            if not isinstance(s, dict):
-                continue
-            terms.extend(str(p).strip() for p in (s.get("participants") or []) if str(p or "").strip())
-            loc = str(s.get("location_id") or "").strip()
-            if loc:
-                terms.append(loc)
-        if terms:
-            return terms
-    return []
-
-
 def _setting_snapshots(session: Session, project_id: uuid.UUID, chapter_seq: int,
-                       snapshots: list[dict],
-                       scene_names: list[str] | None = None) -> list[dict]:
+                       snapshots: list[dict], scene_names: list[str]) -> list[dict]:
     """设定实体快照（§7.11 ④：物品/功法/地点；此前 Entity 永远进不了任何提示词）。
 
     1. 门槛——first_seen_chapter 缺省或早于本章才可用：第 5 章首见的武器不能出现在第 3 章
        的提示词里。在 Python 侧过滤，避开 JSON 算子的方言差异。
     2. 排序——先命中本章场景地点名的实体，其余按创建时间倒序补足。纯「最近创建」在高章号
-       下会灌进一堆无关物品。地点名由调用方传入（plan_cast 已定下本章场景），未传才回退
-       读章节计划——计划是规划第二拍的产物，首次生成时还没有。
+       下会灌进一堆无关物品。地点名由 plan_cast 定下后传入（规划的产物，不是本函数的职责）。
     3. 去重——按 (entity_type, canonical_name)；已进人物快照的同名实体排除（由
        entity_snapshots 负责渲染，避免同一名字出现两次）。
     """
     rows = repo.get_entities(session, project_id)
     if not rows:
         return []
-    names = {str(n).strip() for n in scene_names if str(n).strip()} if scene_names \
-        else _chapter_scene_names(session, project_id, chapter_seq)
+    names = {str(n).strip() for n in scene_names if str(n).strip()}
     character_names = {s.get("name") for s in snapshots}
     picked: list[dict] = []
     seen: set[tuple[str, str]] = set()
@@ -289,7 +243,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     # extract 节点的【当前台账快照】是给 LLM 校准 character_state.old_value / 产出
     # relation_change 候选用的，掺进非人物行会招来追不上的假候选。
     settings_out = _setting_snapshots(session, project_id, chapter_seq, snapshots,
-                                      scene_names=scene_names)
+                                      scene_names=scene_names or [])
 
     # 开放伏笔 + 活跃剧情线（§7.9 防伏笔烂尾：plan_chapter 输入，决定收/延/弃）
     foreshadows_out = [
@@ -319,7 +273,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     # ——补充关键词命中漏掉的呼应/重复素材；失败降级（模型未装/加载失败都不阻断）。
     if prev and prev.summary:
         recall_stats = _hybrid_recall(session, project_id, prev.summary, participants,
-                                      chapter_seq, events_out, facts_out)
+                                      events_out, facts_out)
     else:
         # 第 1 章没有前章摘要可作 query，且 before_chapter=1 让近期事件同样为空——这是设计
         # 如此（靠世界观 + 硬约束 + 大纲开场）。显式标注，便于区分「按设计没有」与「通道瘫了」。
@@ -417,11 +371,12 @@ def _est_tokens(text: str) -> int:
 
 
 def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
-                   participants: list[str] | None, chapter_seq: int,
+                   participants: list[str] | None,
                    events_out: list[dict], facts_out: list[dict]) -> dict:
-    """事件混合召回（§7.2/§16）：向量腿（level=event）+ 关键词腿（本章计划场景人物/地点名 ILIKE），RRF 融合。
+    """事件混合召回（§7.2/§16）：向量腿（level=event）+ 关键词腿（出场人名 ILIKE），RRF 融合。
 
-    关键词腿的术语优先取本章计划（_chapter_keyword_terms），取不到计划才回退 participants。
+    关键词腿的术语就是 participants——它由 plan_cast 定下（本章真正出场的人），
+    不再是 get_all_characters 按姓名排序的前 12 人（那样一直在检索不相干的人名）。
 
     返回 recall_stats（§16 召回 token 占比 + 各腿运行状态）。任一条腿失败单独降级；
     双腿都没产出排序输入 → events_out 原样（纯关系召回兜底），但**仍返回带状态的
@@ -467,7 +422,7 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
             logger.info("向量召回已禁用（EMBED_ENABLED=0），本次按关键词腿/纯关系降级运行")
 
     try:
-        terms = _terms(_chapter_keyword_terms(session, project_id, chapter_seq) or participants)
+        terms = _terms(participants)
         if not terms:
             keyword_status = "no_terms"
         else:

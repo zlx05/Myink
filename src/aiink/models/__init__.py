@@ -3,7 +3,6 @@
 from aiink.models.base import Base
 from aiink.models.chapter import (
     Chapter,
-    ChapterOutline,
     ChapterVersion,
     VolumeOutline,
 )
@@ -74,7 +73,6 @@ __all__ = [
     "Chapter",
     "ChapterVersion",
     "VolumeOutline",
-    "ChapterOutline",
     # validation
     "ValidationReport",
     "Finding",

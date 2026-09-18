@@ -293,3 +293,19 @@ def ensure_chapter_versions() -> None:
             END $$;
         """))
     enable_row_level_security()
+
+
+def ensure_legacy_schema_cleanup() -> None:
+    """幂等清理已死的表/列（老库遗留；新库压根不建）。
+
+    本仓库没有 alembic 迁移链——建表唯一来源是 `Base.metadata.create_all`，而它**只建新表、
+    不改已有表**，删表删列同样不管。所以模型侧删掉的东西必须在老库（dev 栈 + 用户已有
+    作品库）显式 DROP，否则结构里永远留着它，只是没人再读写。`IF EXISTS` 保证新库/重跑
+    无副作用，连跑两次 init 也不报错。
+
+    清的都是「没有主人的契约」：无写入者、无读取者，却仍出现在表结构里误导后来的人。
+    """
+    with _admin_engine.begin() as conn:
+        # 章节计划表：0 行、生产代码零写入。计划的事实来源是 agent_runs.detail
+        # （node=="plan_chapter"）+ LangGraph state，留这张表只会让人以为计划存在关系库里。
+        conn.execute(text("DROP TABLE IF EXISTS chapter_outlines"))

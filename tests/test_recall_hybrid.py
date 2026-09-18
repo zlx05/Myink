@@ -24,8 +24,8 @@ from sqlalchemy import text
 
 from aiink.config import settings
 from aiink.db import tenant_session
-from aiink.models import Chapter, ChapterOutline, Event, Fact
-from aiink.memory.recall import build_context, _chapter_keyword_terms, _rrf_fuse
+from aiink.models import Chapter, Event, Fact
+from aiink.memory.recall import build_context, _rrf_fuse
 from aiink.memory.vector_store import PgvectorStore
 from aiink.workflow import nodes
 
@@ -203,34 +203,12 @@ def test_hybrid_recall_event_tags_and_order(temp_project):
     assert by_id[str(e_kw)]["recalled_by"] == "keyword"
 
 
-# ---- 3b. 关键词腿术语来源（§11 逐章计划）----
+# ---- 3b. 关键词腿术语来源（plan_cast 定下的出场人）----
 
-def test_chapter_keyword_terms_prefers_own_chapter_then_previous(temp_project):
-    pid = uuid.UUID(temp_project)
-    with tenant_session(temp_project) as db:
-        db.add(ChapterOutline(project_id=pid, chapter_seq=3, plan={"scenes": [
-            {"location_id": "黑风寨", "participants": ["苏鸾", "裴元庆"], "goal": "清点"},
-        ]}))
-        db.flush()
-        fallback = _chapter_keyword_terms(db, pid, 4)   # 本章无计划 → 回退上一章
-        db.add(ChapterOutline(project_id=pid, chapter_seq=4, plan={"scenes": [
-            {"location_id": "青石坊市", "participants": ["林砚"], "goal": "采购"},
-        ]}))
-        db.flush()
-        own = _chapter_keyword_terms(db, pid, 4)
-    assert fallback == ["苏鸾", "裴元庆", "黑风寨"]
-    assert own == ["林砚", "青石坊市"]
+def test_keyword_leg_follows_the_cast_not_the_whole_book_roster(temp_project):
+    """回归根因：此前关键词腿的术语是全书人名按姓名排序的前 12，与本章出场无关。
 
-
-def test_chapter_keyword_terms_empty_without_any_plan(temp_project):
-    with tenant_session(temp_project) as db:
-        assert _chapter_keyword_terms(db, uuid.UUID(temp_project), 1) == []
-
-
-def test_keyword_leg_uses_plan_names_not_the_whole_book_roster(temp_project):
-    """回归根因：调用方传的 participants 是全书人名前 12，与本章出场无关。
-
-    有计划时关键词腿必须按计划的场景人物/地点出术语——否则会一直召回不相干人物的旧事件。
+    现在术语就是 plan_cast 定下的出场人——传谁就检索谁；本章不出场的林砚不会被召回。
     """
     pid = uuid.UUID(temp_project)
     with tenant_session(temp_project) as db:
@@ -244,10 +222,8 @@ def test_keyword_leg_uses_plan_names_not_the_whole_book_roster(temp_project):
                      source_chapter=6, confidence=0.9))
         db.add(Event(project_id=pid, summary="林砚独自修炼剑法", participants=[],
                      source_chapter=7, confidence=0.9))
-        db.add(ChapterOutline(project_id=pid, chapter_seq=21, plan={
-            "scenes": [{"location_id": "黑风寨", "participants": ["苏鸾"], "goal": "清点"}]}))
         db.flush()
-        ctx = build_context(db, project_id=pid, chapter_seq=21, participants=["林砚"])
+        ctx = build_context(db, project_id=pid, chapter_seq=21, participants=["苏鸾"])
     recalled = [e["summary"] for e in ctx.mid_term_events if e.get("recalled_by")]
     assert "苏鸾在黑风寨清点伤亡" in recalled
     assert "林砚独自修炼剑法" not in recalled

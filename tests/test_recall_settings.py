@@ -4,7 +4,7 @@
 本文件覆盖 `recall._setting_snapshots` 的取样规则：
 
 - first_seen_chapter 门槛——第 5 章首见的武器不能出现在第 3 章的提示词里；
-- 本章场景地点名命中的实体优先，其余按创建时间倒序补足；
+- 本章场景地点名（由 plan_cast 定下后传入）命中的实体优先，其余按创建时间倒序补足；
 - 与人物快照同名者排除（由 entity_snapshots 渲染，避免同一名字出现两次）；
 - cap 上限。
 """
@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 
 from aiink.db import tenant_session
 from aiink.memory.recall import _MAX_SETTINGS, build_context
-from aiink.models import ChapterOutline, Character, Entity
+from aiink.models import Character, Entity
 
 _BASE = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
@@ -56,25 +56,9 @@ def test_scene_location_name_ranks_first(temp_project):
         _add_entity(db, pid, "item", "旧物", first_seen=1, created=_BASE)
         _add_entity(db, pid, "item", "新物", first_seen=1, created=_BASE + timedelta(days=2))
         _add_entity(db, pid, "location", "黑风寨", first_seen=1, created=_BASE - timedelta(days=5))
-        db.add(ChapterOutline(project_id=pid, chapter_seq=4, plan={
-            "scenes": [{"location_id": "黑风寨", "participants": ["林砚"], "goal": "夺宝"}],
-        }))
         db.flush()
-        ctx = build_context(db, project_id=pid, chapter_seq=4)
+        ctx = build_context(db, project_id=pid, chapter_seq=4, scene_names=["黑风寨"])
     assert _names(ctx) == ["黑风寨", "新物", "旧物"], "场景地点名命中者优先，其余按创建时间倒序"
-
-
-def test_scene_names_fall_back_to_previous_chapter(temp_project):
-    """首次生成本章时本章计划尚未落库，只有上一章计划可用。"""
-    pid = uuid.UUID(temp_project)
-    with tenant_session(temp_project) as db:
-        _add_entity(db, pid, "location", "黑风寨", first_seen=1, created=_BASE)
-        _add_entity(db, pid, "item", "新物", first_seen=1, created=_BASE + timedelta(days=2))
-        db.add(ChapterOutline(project_id=pid, chapter_seq=3,
-                              plan={"scenes": [{"location_id": "黑风寨"}]}))
-        db.flush()
-        ctx = build_context(db, project_id=pid, chapter_seq=4)
-    assert _names(ctx) == ["黑风寨", "新物"]
 
 
 def test_entity_sharing_character_name_is_excluded(temp_project):

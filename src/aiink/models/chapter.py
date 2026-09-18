@@ -74,15 +74,3 @@ class VolumeOutline(Base, UUIDPkMixin, TimestampMixin):
     volume_seq: Mapped[int] = mapped_column(Integer, nullable=False)
     title: Mapped[str | None] = mapped_column(String(255))
     outline: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False, comment="卷纲内容")
-
-
-class ChapterOutline(Base, UUIDPkMixin, TimestampMixin):
-    """章节计划（§6.4 ChapterPlan 结构化对象，含预期事件 → 大纲偏差比对输入）。"""
-
-    __tablename__ = "chapter_outlines"
-
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    chapter_seq: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    plan: Mapped[dict] = mapped_column(JSON, nullable=False, comment="ChapterPlan 对象体")

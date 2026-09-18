@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from aiink.models import (
     Alias,
     Chapter,
-    ChapterOutline,
     ChapterVersion,
     Character,
     CharacterState,
@@ -250,12 +249,6 @@ def get_latest_chapter(session: Session, project_id: uuid.UUID) -> Chapter | Non
     return session.execute(
         select(Chapter).where(Chapter.project_id == project_id)
         .order_by(Chapter.chapter_seq.desc()).limit(1)
-    ).scalar_one_or_none()
-
-
-def get_chapter_outline(session: Session, project_id: uuid.UUID, chapter_seq: int) -> ChapterOutline | None:
-    return session.execute(
-        select(ChapterOutline).where(ChapterOutline.project_id == project_id, ChapterOutline.chapter_seq == chapter_seq)
     ).scalar_one_or_none()
 
 

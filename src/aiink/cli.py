@@ -31,9 +31,9 @@ def init() -> None:
     """初始化数据库：建表 + RLS + demo 种子数据。"""
     from aiink.db import (enable_row_level_security, ensure_chapter_versions,
                           ensure_genre_pack, ensure_global_audit_reports,
-                          ensure_memory_candidate_kinds, ensure_storage_indexes,
-                          ensure_unique_constraints, ensure_user_environment,
-                          ensure_user_tier, get_admin_engine)
+                          ensure_legacy_schema_cleanup, ensure_memory_candidate_kinds,
+                          ensure_storage_indexes, ensure_unique_constraints,
+                          ensure_user_environment, ensure_user_tier, get_admin_engine)
     from aiink.seed import create_sample_books
 
     # 建表 + RLS 走超级用户（owner）连接；业务运行走 aiink_app（NOBYPASSRLS，受 RLS 约束）
@@ -57,6 +57,8 @@ def init() -> None:
     ensure_global_audit_reports()
     console.print("[bold]1.8/3[/] 补齐章节版本表（chapter_versions，阶段 4 历史/回退）...")
     ensure_chapter_versions()
+    console.print("[bold]1.85/3[/] 清理已死的表/列（老库遗留，幂等）...")
+    ensure_legacy_schema_cleanup()
     console.print("[bold]2/3[/] 启用 RLS 主强制（FORCE ROW LEVEL SECURITY）...")
     enable_row_level_security()
     console.print("[bold]3/3[/] 写入 demo 种子（《九州问天》+ 示例书）...")
