@@ -10,8 +10,10 @@
 
 混合召回（§7.2/§16，2026-08-12 落地）：事件级双路——向量腿（level=event）
 + 关键词腿（出场人物名对事件摘要 ILIKE），RRF 融合排序；两腿独立降级。
-recall_stats 上报召回占比（§16 工程评测）。事实读侧腿本切片不做（world 索引
-写侧已落地，读侧待 get_hard_facts 改按相似度排序后激活）。
+recall_stats 上报召回占比（§16 工程评测）+ 各腿状态（ok/disabled/failed/empty/
+no_terms/enabled_but_empty）与 degrade_reason：默认 EMBED_ENABLED=0 下向量腿是
+「关闭」而不是「故障」，且「开关打开但索引为空」这一静默空转必须能看出来。
+事实读侧腿本切片不做（world 索引写侧已落地，读侧待 get_hard_facts 改按相似度排序后激活）。
 """
 
 from __future__ import annotations
@@ -23,10 +25,11 @@ import uuid
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from aiink.config import settings
 from aiink.memory import repository as repo
 from aiink.memory.embedder import get_embedder
 from aiink.memory.vector_store import PgvectorStore
-from aiink.models import Chapter, Character, Event, MemoryCandidate
+from aiink.models import Chapter, Character, EmbeddingRow, Event, MemoryCandidate
 from aiink.schemas import RetrievedContext
 from aiink.context_budget import estimate_tokens
 from aiink.validation.continuity import opening_excerpt
@@ -209,7 +212,9 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         recall_stats = _hybrid_recall(session, project_id, prev.summary, participants,
                                       events_out, facts_out)
     else:
-        recall_stats = {}
+        # 第 1 章没有前章摘要可作 query，且 before_chapter=1 让近期事件同样为空——这是设计
+        # 如此（靠世界观 + 硬约束 + 大纲开场）。显式标注，便于区分「按设计没有」与「通道瘫了」。
+        recall_stats = {"hybrid_status": "skipped_no_prev"}
 
     # 混合召回也可能返回本章旧版/未来事件；不能把这些当作已经发生的前情。
     events_out = [e for e in events_out if e["chapter"] < chapter_seq]
@@ -227,7 +232,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         ctx.short_context.append({"kind": "user_instruction", "text": user_instruction})
     # 记录召回数据的估算量；提示词组装时按完整消息预算选择可选记忆。
     ctx.token_usage = estimate_tokens(ctx.model_dump(exclude={"token_usage", "recall_stats"}))
-    ctx.recall_stats = recall_stats  # §16 召回占比（混合召回时填充，无 hybrid → {}）
+    ctx.recall_stats = recall_stats  # §16 召回占比 + 各腿状态（无前章 → skipped_no_prev）
     return ctx
 
 
@@ -286,6 +291,16 @@ def _keyword_event_leg(session: Session, project_id: uuid.UUID,
     return out
 
 
+def _has_event_embeddings(session: Session, project_id: uuid.UUID) -> bool:
+    """本书是否已建事件向量索引。仅在向量检索 0 命中时调用，用于区分「确实没有相似
+    事件」与「开关打开但索引从未建立」——后者是最初的静默空转状态，必须能看出来。"""
+    return session.execute(
+        select(EmbeddingRow.id).where(
+            EmbeddingRow.project_id == project_id, EmbeddingRow.level == "event",
+        ).limit(1)
+    ).first() is not None
+
+
 def _est_tokens(text: str) -> int:
     """中文 token 估算（1 字 ≈ 1.4 token，§7.12 口径；不引 tokenizer 依赖）。"""
     return int(len(text or "") * _TOKEN_PER_CHAR)
@@ -296,13 +311,16 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
                    events_out: list[dict], facts_out: list[dict]) -> dict:
     """事件混合召回（§7.2/§16）：向量腿（level=event）+ 关键词腿（人物名 ILIKE），RRF 融合。
 
-    返回 recall_stats（§16 召回 token 占比）。任一条腿失败单独降级；双腿全失败 → {}（纯
-    关系召回兜底，events_out 原样）。**facts_out 只读**（供占比估算，不 mutate——防
-    shared_context 批次缓存污染，recall.py:74 同 list 对象复用）。
+    返回 recall_stats（§16 召回 token 占比 + 各腿运行状态）。任一条腿失败单独降级；
+    双腿都没产出排序输入 → events_out 原样（纯关系召回兜底），但**仍返回带状态的
+    stats**，调用方据此区分「确实没有相关事件」与「整条召回通道没跑起来」。
+    **facts_out 只读**（供占比估算，不 mutate——防 shared_context 批次缓存污染）。
     """
     legs: list[tuple[str, list[uuid.UUID]]] = []
     tags: dict[uuid.UUID, set[str]] = {}
     vector_hits = keyword_hits = 0
+    vector_status = "disabled"
+    keyword_status = "no_terms"
 
     try:
         emb = get_embedder().encode([query_text])[0]
@@ -319,52 +337,76 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
             legs.append(("vector", vec_ids))
             for sid in vec_ids:
                 tags.setdefault(sid, set()).add("vector")
+            vector_status = "ok"
+        else:
+            # 0 命中分两种：确实没有相似事件（empty），或开关打开却从未建过索引
+            # （enabled_but_empty）——后者是最初的静默空转，必须能在 log/stats 里看出来。
+            vector_status = "empty" if _has_event_embeddings(session, project_id) else "enabled_but_empty"
+            if vector_status == "enabled_but_empty":
+                logger.warning("事件向量召回已启用但索引为空，本次退化为纯关键词召回（需先回填）")
     except Exception as exc:
-        logger.warning("向量腿召回失败，降级为关键词腿/纯关系: %s", exc)
+        # EMBED_ENABLED=0 时 _DisabledEmbedder 必抛：这是既定的关闭路径，不是故障。
+        # 两者分开记，否则默认配置下每次召回都会刷一条看起来像错误的 warning。
+        if settings.embed_enabled:
+            vector_status = "failed"
+            logger.warning("向量腿召回失败，降级为关键词腿/纯关系: %s", exc)
+        else:
+            vector_status = "disabled"
+            logger.info("向量召回已禁用（EMBED_ENABLED=0），本次按关键词腿/纯关系降级运行")
 
     try:
         terms = _terms(participants)
-        kw_ids = _keyword_event_leg(session, project_id, terms)
-        keyword_hits = len(kw_ids)
-        if kw_ids:
-            legs.append(("keyword", kw_ids))
-            for sid in kw_ids:
-                tags.setdefault(sid, set()).add("keyword")
+        if not terms:
+            keyword_status = "no_terms"
+        else:
+            kw_ids = _keyword_event_leg(session, project_id, terms)
+            keyword_hits = len(kw_ids)
+            if kw_ids:
+                legs.append(("keyword", kw_ids))
+                for sid in kw_ids:
+                    tags.setdefault(sid, set()).add("keyword")
+                keyword_status = "ok"
+            else:
+                keyword_status = "empty"
     except Exception as exc:
+        keyword_status = "failed"
         logger.warning("关键词腿召回失败，降级为向量腿/纯关系: %s", exc)
 
-    if not legs:
-        return {}
-
-    fused = _rrf_fuse([ids for _, ids in legs])
-    known = {str(e["event_id"]) for e in events_out}
-    fused_ids = [sid for sid, _ in fused]
-    rows = session.execute(
-        select(Event).where(Event.id.in_(fused_ids))
-    ).scalars().all()
-    by_id = {str(e.id): e for e in rows}
-
     added = 0
-    for sid, _ in fused:
-        if added >= _EVENT_RECALL_EXTRA_CAP:
-            break
-        skey = str(sid)
-        if skey in known or skey not in by_id:
-            continue
-        ev = by_id[skey]
-        events_out.append({"event_id": skey, "chapter": ev.source_chapter,
-                           "confidence": ev.confidence,
-                           "recalled_by": "+".join(sorted(tags.get(sid, {"vector"}))),
-                           "summary": (ev.summary or "")[: _CONTENT_CAP]})
-        known.add(skey)
-        added += 1
-    logger.info("事件混合召回补充 %d 条（向量 %d / 关键词 %d）", added, vector_hits, keyword_hits)
+    if legs:
+        fused = _rrf_fuse([ids for _, ids in legs])
+        known = {str(e["event_id"]) for e in events_out}
+        fused_ids = [sid for sid, _ in fused]
+        rows = session.execute(
+            select(Event).where(Event.id.in_(fused_ids))
+        ).scalars().all()
+        by_id = {str(e.id): e for e in rows}
+
+        for sid, _ in fused:
+            if added >= _EVENT_RECALL_EXTRA_CAP:
+                break
+            skey = str(sid)
+            if skey in known or skey not in by_id:
+                continue
+            ev = by_id[skey]
+            events_out.append({"event_id": skey, "chapter": ev.source_chapter,
+                               "confidence": ev.confidence,
+                               "recalled_by": "+".join(sorted(tags.get(sid, {"vector"}))),
+                               "summary": (ev.summary or "")[:_CONTENT_CAP]})
+            known.add(skey)
+            added += 1
+        logger.info("事件混合召回补充 %d 条（向量 %d / 关键词 %d）", added, vector_hits, keyword_hits)
 
     recall_tokens = sum(_est_tokens(e.get("summary", "")) for e in events_out if e.get("recalled_by"))
     context_tokens = (
         sum(_est_tokens(f.get("content", "")[: _CONTENT_CAP]) for f in facts_out)
         + sum(_est_tokens(e.get("summary", "")) for e in events_out)
     )
+    # 降级原因：腿没跑成/没命中就记下来，调用方据此区分「按设计没有」与「通道瘫了」。
+    # 各腿独立降级，任一条腿正常就不算全瘫，所以逐腿拼接而非只报一个总状态。
+    reasons = [f"vector_{vector_status}"] if vector_status != "ok" else []
+    if keyword_status != "ok":
+        reasons.append(f"keyword_{keyword_status}")
     return {
         "vector_hits": vector_hits,
         "keyword_hits": keyword_hits,
@@ -372,4 +414,7 @@ def _hybrid_recall(session: Session, project_id: uuid.UUID, query_text: str,
         "recall_tokens_est": recall_tokens,
         "context_tokens_est": context_tokens,
         "share": round(recall_tokens / max(context_tokens, 1), 4),
+        "vector_status": vector_status,
+        "keyword_status": keyword_status,
+        "degrade_reason": "+".join(reasons) if reasons else None,
     }

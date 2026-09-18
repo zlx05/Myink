@@ -4,8 +4,8 @@
 - 写侧分层：persist 软事实 → embeddings level='world'、事件 → level='event'、硬事实不索引；
 - `_rrf_fuse` 纯函数（重叠排序 / 空腿 / 双命中权重 / k 值）；
 - 事件混合召回：向量腿 + 关键词腿 RRF 融合，`recalled_by` 三态标注；
-- 降级：embedder 抛错 → 关键词腿独立工作；双腿全空 → 纯关系兜底 + recall_stats=={}；
-- recall_stats 六字段。
+- 降级：embedder 抛错 → 关键词腿独立工作；双腿全空 → 纯关系兜底 + 各腿状态如实上报；
+- recall_stats 六字段 + 各腿状态（vector_status/keyword_status/degrade_reason）。
 
 **确定性 fake（关键）**：pgvector 0.8.6 实测 `cosine_distance(零向量, 任意)=NaN`——全零
 fake 下 top_k 排序任意。本文件用 3-gram 特征哈希 → 1024 维单位向量（共享子串 → 高余弦
@@ -15,12 +15,14 @@ fake 下 top_k 排序任意。本文件用 3-gram 特征哈希 → 1024 维单�
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import uuid
 
 import pytest
 from sqlalchemy import text
 
+from aiink.config import settings
 from aiink.db import tenant_session
 from aiink.models import Chapter, Event, Fact
 from aiink.memory.recall import build_context, _rrf_fuse
@@ -59,6 +61,17 @@ def fake_embedder(monkeypatch):
     monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
     monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
     return fake
+
+
+@pytest.fixture
+def embed_flag(monkeypatch):
+    """显式钉死向量开关。settings 是 frozen 单例，只能替换模块里的引用（不改单例本身）；
+    其取值随环境漂移（compose/ci-local=0，裸跑 pytest 取代码默认 1），凡断言腿状态的
+    用例都必须自己设定，否则会随环境红绿。"""
+    def _set(enabled: bool):
+        monkeypatch.setattr("aiink.memory.recall.settings",
+                            dataclasses.replace(settings, embed_enabled=enabled))
+    return _set
 
 
 def _pid() -> uuid.UUID:
@@ -192,12 +205,12 @@ def test_hybrid_recall_event_tags_and_order(temp_project):
 
 # ---- 4. 降级 ----
 
-def test_hybrid_recall_degrade_embedder_fails(temp_project):
+def test_hybrid_recall_degrade_embedder_fails(temp_project, embed_flag, monkeypatch):
     _seed_hybrid_data(temp_project)
+    embed_flag(True)
     with tenant_session(temp_project) as db:
         # 只 monkeypatch recall 侧 get_embedder：embedder 加载失败 → 向量腿挂，关键词腿仍工作
-        import aiink.memory.recall as recall_mod
-        recall_mod.get_embedder = lambda: RaiseEmbedder()
+        monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: RaiseEmbedder())
         ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21,
                             participants=["林砚"])
         new = [e for e in ctx.mid_term_events if e.get("recalled_by")]
@@ -205,20 +218,63 @@ def test_hybrid_recall_degrade_embedder_fails(temp_project):
         assert all("keyword" in e["recalled_by"] for e in new), new
         assert ctx.recall_stats["keyword_hits"] >= 1
         assert ctx.recall_stats["vector_hits"] == 0
+        # 开关是开的却抛错 → 这是真故障，不是「已关闭」
+        assert ctx.recall_stats["vector_status"] == "failed"
+        assert ctx.recall_stats["degrade_reason"] == "vector_failed"
 
 
-def test_hybrid_recall_degrade_both_legs_empty(temp_project):
+def test_hybrid_recall_reports_vector_disabled(temp_project, embed_flag, monkeypatch):
+    """默认配置（EMBED_ENABLED=0）下向量腿是「关闭」而非「故障」：状态记 disabled，
+    日志走 info 不刷 warning，且关键词腿照常独立工作。"""
     _seed_hybrid_data(temp_project)
+    embed_flag(False)
+    monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: RaiseEmbedder())
     with tenant_session(temp_project) as db:
-        import aiink.memory.recall as recall_mod
-        recall_mod.get_embedder = lambda: RaiseEmbedder()
+        ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21,
+                            participants=["林砚"])
+    assert ctx.recall_stats["vector_status"] == "disabled"
+    assert ctx.recall_stats["vector_hits"] == 0
+    assert ctx.recall_stats["keyword_status"] == "ok"
+    assert ctx.recall_stats["degrade_reason"] == "vector_disabled"
+
+
+def test_hybrid_recall_degrade_both_legs_empty(temp_project, embed_flag, monkeypatch):
+    _seed_hybrid_data(temp_project)
+    embed_flag(False)
+    with tenant_session(temp_project) as db:
+        monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: RaiseEmbedder())
         # participants=None → 关键词腿术语空；向量腿抛错 → 双腿全空 = 纯关系兜底
         ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21)
         assert not [e for e in ctx.mid_term_events if e.get("recalled_by")]
-        assert ctx.recall_stats == {}
+        # 双腿都没跑成也仍要如实上报各腿状态：返回 {} 就分不清「确实没有」和「通道瘫了」
+        assert ctx.recall_stats["vector_status"] == "disabled"
+        assert ctx.recall_stats["keyword_status"] == "no_terms"
+        assert ctx.recall_stats["fused_total"] == 0
+        assert ctx.recall_stats["degrade_reason"] == "vector_disabled+keyword_no_terms"
+
+
+def test_embed_enabled_but_empty_flags_degraded(temp_project, embed_flag):
+    """开关打开但索引为空：必须显式标记，不能表现为「一切正常只是没命中」——
+    这正是最初那个「开了开关却什么都没发生」的静默空转。"""
+    p = uuid.UUID(temp_project)
+    embed_flag(True)
+    with tenant_session(temp_project) as db:
+        db.add(Chapter(project_id=p, chapter_seq=1, title="第1章",
+                       content="", summary=QUERY_SUMMARY, status="confirmed"))
+        db.flush()
+        ctx = build_context(db, project_id=p, chapter_seq=2, participants=["林砚"])
+    assert ctx.recall_stats["vector_status"] == "enabled_but_empty"
+    assert ctx.recall_stats["degrade_reason"] == "vector_enabled_but_empty+keyword_empty"
 
 
 # ---- 5. recall_stats ----
+
+def test_recall_stats_skipped_no_prev(temp_project):
+    """第 1 章没有前章摘要可作 query：显式记 skipped_no_prev，与「通道瘫了」区分开。"""
+    with tenant_session(temp_project) as db:
+        ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=1)
+    assert ctx.recall_stats == {"hybrid_status": "skipped_no_prev"}
+
 
 def test_recall_stats_fields(temp_project):
     _seed_hybrid_data(temp_project)
@@ -226,9 +282,14 @@ def test_recall_stats_fields(temp_project):
         ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21,
                             participants=["林砚"])
     keys = {"vector_hits", "keyword_hits", "fused_total", "recall_tokens_est",
-            "context_tokens_est", "share"}
+            "context_tokens_est", "share", "vector_status", "keyword_status",
+            "degrade_reason"}
     assert set(ctx.recall_stats) == keys, ctx.recall_stats
     assert ctx.recall_stats["fused_total"] == 5, ctx.recall_stats
     assert ctx.recall_stats["vector_hits"] >= 1 and ctx.recall_stats["keyword_hits"] >= 1
     assert 0 <= ctx.recall_stats["share"] <= 1, ctx.recall_stats
     assert ctx.recall_stats["context_tokens_est"] > 0
+    # 双腿都正常 → 没有降级可报
+    assert ctx.recall_stats["vector_status"] == "ok"
+    assert ctx.recall_stats["keyword_status"] == "ok"
+    assert ctx.recall_stats["degrade_reason"] is None
