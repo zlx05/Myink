@@ -204,6 +204,13 @@ def _render_entity(item: dict) -> str:
     state = item.get("state", {})
     relations = item.get("relations", [])
     line = f"- [{item.get('name')}] 境界上限={item.get('realm_cap')} 状态={state}"
+    changes = item.get("state_changes") or {}
+    if changes:
+        # 字段名沿用紧邻的 状态={...} 的原始键，不另建中文映射（同一行两套口径会更难读）。
+        line += " 变化: " + ", ".join(
+            f"{f} {c.get('old')}→{state.get(f, '')}(第{c.get('chapter')}章)"
+            for f, c in changes.items()
+        )
     if relations:
         rels = ", ".join(
             f"→{r.get('target')}={r.get('relation_type')}" + (f"(自第{r.get('source_chapter')}章)" if r.get("source_chapter") else "")

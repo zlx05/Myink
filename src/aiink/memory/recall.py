@@ -225,14 +225,23 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
                 for ch in history if (ch.content or "").strip()]
 
     # 出场人物状态快照（含当前关系——L2 正文-台账语义比对与写前预防的台账侧输入，
-    # _render_entity 一并注入 write/plan/audit/extract；只取 ch 为 source 的有序对活跃行）
+    # _render_entity 一并注入 write/plan/audit/extract；只取 ch 为 source 的有序对活跃行）。
+    # state_changes 另带每 field 的上一值：只给当前值，模型看不出「这一章刚突破」。只收
+    # 真实跃迁（旧值非空且与新值不同），否则会把没变的字段也渲染成一堆伪变化。
     snapshots: list[dict] = []
     if participants:
         for name in participants[: _MAX_ENTITIES]:
             ch = repo.get_character(session, project_id, name)
             if not ch:
                 continue
-            state = repo.get_character_state(session, project_id, ch.id, chapter_seq)
+            state_detail = repo.get_character_state_detail(session, project_id, ch.id, chapter_seq)
+            # 当前值口径与 get_character_state 一致（每 field 取最近一条有效行），只是不再丢上一值。
+            state = {f: d["new_value"] for f, d in state_detail.items()}
+            state_changes = {
+                f: {"old": d["old_value"], "chapter": d["source_chapter"]}
+                for f, d in state_detail.items()
+                if d["old_value"] and d["old_value"] != d["new_value"]
+            }
             relations = [
                 {"target": _relation_target_name(session, r.target_id),
                  "relation_type": r.relation_type, "source_chapter": r.source_chapter}
@@ -241,7 +250,8 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
             ]
             snapshots.append({
                 "character_id": str(ch.id), "name": ch.name, "realm_cap": ch.realm_cap,
-                "state": state, "personality": ch.personality, "relations": relations,
+                "state": state, "state_changes": state_changes,
+                "personality": ch.personality, "relations": relations,
             })
 
     # 设定实体快照（§7.11 ④：物品/功法/地点）。此前 Entity 只写不读——自动建档的设定

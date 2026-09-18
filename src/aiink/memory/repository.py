@@ -119,6 +119,39 @@ def get_character_state(session: Session, project_id: uuid.UUID, character_id: u
     return state
 
 
+def get_character_state_detail(session: Session, project_id: uuid.UUID, character_id: uuid.UUID,
+                               chapter_seq: int) -> dict[str, dict]:
+    """人物状态台账当前值 + 上一值（recall 快照用，§7.7 追加式台账）。
+
+    与 get_character_state 取同一批行（同样的时间窗与 valid_to 过滤），但**不压平丢掉
+    历史**：每个 field 除当前行外再取前一行的 new_value 当旧值。台账的 old_value 列常为
+    空串（extract 只在能从注入快照校准时才填），只读该列则「变化」永远渲染不出来。
+    返回 {field: {new_value, old_value, source_chapter, confidence}}，old_value 可能为 None。
+    """
+    rows = session.execute(
+        select(CharacterState).where(
+            CharacterState.project_id == project_id,
+            CharacterState.character_id == character_id,
+            CharacterState.chapter_seq <= chapter_seq,
+            CharacterState.valid_from <= chapter_seq,
+            CharacterState.valid_to.is_(None),
+        ).order_by(CharacterState.chapter_seq.desc())
+    ).scalars().all()
+    detail: dict[str, dict] = {}
+    for r in rows:  # 每 field 按 chapter_seq 降序：首见为当前，次见为上一值
+        cur = detail.get(r.field)
+        if cur is None:
+            detail[r.field] = {
+                "new_value": r.new_value or "",
+                "old_value": (r.old_value or "").strip() or None,
+                "source_chapter": r.source_chapter,
+                "confidence": r.confidence,
+            }
+        elif cur["old_value"] is None:
+            cur["old_value"] = r.new_value or None
+    return detail
+
+
 def get_relations(session: Session, project_id: uuid.UUID, entity_ids: list[uuid.UUID] | None = None) -> list[Relation]:
     q = select(Relation).where(Relation.project_id == project_id, Relation.valid_to.is_(None))
     if entity_ids:
