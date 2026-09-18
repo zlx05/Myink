@@ -31,7 +31,9 @@ class ManualPlanProvider(ModelProvider):
 
         node = _infer_node(messages)
         self.calls.append(node)
-        if node == "plan":
+        if node == "cast":
+            content = json.dumps({"cast": ["林砚"], "locations": ["山门"]}, ensure_ascii=False)
+        elif node == "plan":
             self.plan_count += 1
             content = json.dumps({
                 "goals": [f"第 {self.plan_count} 版目标"],

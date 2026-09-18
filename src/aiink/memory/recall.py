@@ -132,20 +132,23 @@ def _chapter_keyword_terms(session: Session, project_id: uuid.UUID, chapter_seq:
 
 
 def _setting_snapshots(session: Session, project_id: uuid.UUID, chapter_seq: int,
-                       snapshots: list[dict]) -> list[dict]:
+                       snapshots: list[dict],
+                       scene_names: list[str] | None = None) -> list[dict]:
     """设定实体快照（§7.11 ④：物品/功法/地点；此前 Entity 永远进不了任何提示词）。
 
     1. 门槛——first_seen_chapter 缺省或早于本章才可用：第 5 章首见的武器不能出现在第 3 章
        的提示词里。在 Python 侧过滤，避开 JSON 算子的方言差异。
-    2. 排序——先命中本章（缺则上一章）计划场景地点名的实体，其余按创建时间倒序补足。
-       纯「最近创建」在高章号下会灌进一堆无关物品。
+    2. 排序——先命中本章场景地点名的实体，其余按创建时间倒序补足。纯「最近创建」在高章号
+       下会灌进一堆无关物品。地点名由调用方传入（plan_cast 已定下本章场景），未传才回退
+       读章节计划——计划是规划第二拍的产物，首次生成时还没有。
     3. 去重——按 (entity_type, canonical_name)；已进人物快照的同名实体排除（由
        entity_snapshots 负责渲染，避免同一名字出现两次）。
     """
     rows = repo.get_entities(session, project_id)
     if not rows:
         return []
-    scene_names = _chapter_scene_names(session, project_id, chapter_seq)
+    names = {str(n).strip() for n in scene_names if str(n).strip()} if scene_names \
+        else _chapter_scene_names(session, project_id, chapter_seq)
     character_names = {s.get("name") for s in snapshots}
     picked: list[dict] = []
     seen: set[tuple[str, str]] = set()
@@ -160,7 +163,7 @@ def _setting_snapshots(session: Session, project_id: uuid.UUID, chapter_seq: int
             first_seen = props.get("first_seen_chapter")
             if isinstance(first_seen, int) and first_seen >= chapter_seq:
                 continue
-            if (name in scene_names) != hit_scene:
+            if (name in names) != hit_scene:
                 continue
             seen.add(key)
             picked.append({
@@ -193,10 +196,13 @@ def _merge_settings_constraints(session: Session, project_id: uuid.UUID,
 
 def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
                   participants: list[str] | None = None,
+                  scene_names: list[str] | None = None,
                   user_instruction: str | None = None,
                   shared_context: dict | None = None) -> RetrievedContext:
     """组装 recall 输出：设定 + 前情 + 状态快照 + 伏笔/剧情线 + 事件语义召回。
 
+    participants/scene_names 由调用方给出「本章出场的是谁、在哪」——出场人物本是规划的
+    产物，故首次组装（node_recall）两者皆空，plan_cast 定下人选后再以真实名单重取一次。
     批次级共享池（§6.11）：shared_context 携带批次内已组装一次的**稳定部分**
     （长期事实 hard_facts），传入则复用、不再查库；首章未缓存则查库并把结果回填
     到同一 dict，供批次层桥给后续章。变化部分（近期事件/伏笔/剧情线/快照）每章照查。
@@ -282,7 +288,8 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
     # 永远进不了任何提示词，等于功能死路。单独成字段而**不并进 entity_snapshots**：
     # extract 节点的【当前台账快照】是给 LLM 校准 character_state.old_value / 产出
     # relation_change 候选用的，掺进非人物行会招来追不上的假候选。
-    settings_out = _setting_snapshots(session, project_id, chapter_seq, snapshots)
+    settings_out = _setting_snapshots(session, project_id, chapter_seq, snapshots,
+                                      scene_names=scene_names)
 
     # 开放伏笔 + 活跃剧情线（§7.9 防伏笔烂尾：plan_chapter 输入，决定收/延/弃）
     foreshadows_out = [

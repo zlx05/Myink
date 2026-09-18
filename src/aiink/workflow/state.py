@@ -31,6 +31,9 @@ class ChapterState(TypedDict, total=False):
     # recall 产物
     context: dict  # RetrievedContext.model_dump()
 
+    # plan_cast 产物（规划第一拍：先定出场人物/场景地点，据此重取 context）
+    cast: dict  # ChapterCast.model_dump()
+
     # plan_chapter 产物
     plan: dict  # ChapterPlan.model_dump()
     batch_goal: str | None  # 批次推进目标（§6.11）

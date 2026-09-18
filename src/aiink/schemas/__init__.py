@@ -2,6 +2,7 @@
 
 from aiink.schemas.contract import (
     AuditVerdict,
+    ChapterCast,
     ChapterPlan,
     Character,
     CharacterPresence,
@@ -24,6 +25,7 @@ __all__ = [
     "Character",
     "Scene",
     "CharacterPresence",
+    "ChapterCast",
     "ChapterPlan",
     "Event",
     "Fact",

@@ -5,6 +5,7 @@ import type { ChapterStatus, FindingSeverity, TaskStatus, Verdict } from '../typ
 export const NODE_LABELS: Record<string, string> = {
   load_state: '加载状态',
   recall: '回忆召回',
+  plan_cast: '出场人物',
   plan_chapter: '章节规划',
   plan_review: '确认计划',
   write: '写作',

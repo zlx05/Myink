@@ -113,7 +113,7 @@ def test_generated_transition_anchor_repair_is_narrow_and_exact():
 
 def test_revision_reextracts_memory_and_clears_old_findings(monkeypatch):
     order = []
-    for name in ('load_state', 'recall', 'plan_chapter', 'summarize'):
+    for name in ('load_state', 'recall', 'plan_cast', 'plan_chapter', 'summarize'):
         monkeypatch.setattr(nodes, f'node_{name}', lambda state: {})
     monkeypatch.setattr(nodes, 'node_write', lambda state: {'draft': '旧稿'})
     def extract(state):

@@ -34,7 +34,8 @@ from aiink.models import (AgentRun, Alias, Chapter, Character, CharacterState, E
 from aiink.models.memory import CHARACTER_STATE_FIELDS, RELATION_TYPES
 from aiink.providers import FallbackChain, ModelResponse, make_chain
 from aiink.providers.deepseek import strip_thinking_text
-from aiink.schemas import AuditVerdict, ChapterPlan, Finding, MutationCandidate, ValidationReport
+from aiink.schemas import (AuditVerdict, ChapterCast, ChapterPlan, Finding,
+                           MutationCandidate, ValidationReport)
 from aiink.validation.ledger_l2 import run_ledger_l2
 from aiink.validation.continuity import check_transition_anchor, repair_generated_transition_anchor
 from aiink.validation.service import ValidationService
@@ -116,7 +117,7 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
 # 3000 字 ≈ 2100 tokens；×1.25 余量防截断，同时从源头限死字数（最多 ~3900 字）。
 _WRITE_TOKENS_PER_CHAR = 1.43
 _MAX_TOKENS = {
-    "plan_chapter": 8192, "extract": 4096, "revise": 8192, "audit": 8192,
+    "plan_cast": 1024, "plan_chapter": 8192, "extract": 4096, "revise": 8192, "audit": 8192,
     "reflexion": 4096, "summarize": 1024, "book_setup": 8192, "book_outline": 16384,
 }
 
@@ -616,13 +617,18 @@ def _merge_unresolved(prev: list[dict], audit_findings: list[Finding]) -> list[d
 
 
 def node_recall(state: ChapterState) -> ChapterState:
+    """首次组装召回上下文：只出「与出场人物无关」的宽部分。
+
+    人物状态快照、设定实体相关度、事件混合召回的术语都依赖「本章谁出场」，而出场人物
+    是规划的产物——此前这里拿 get_all_characters 按姓名排序的前 12 人冒充，与本章情节
+    无关。改为不传：由 plan_cast 定下名单后重取一次（见 node_plan_cast）。
+    """
     pid = state["project_id"]
-    participants = [c.get("name") for c in state.get("characters", [])[:12]]
     shared = state.get("shared_context") or {}
     with tenant_session(pid) as db:
         ctx = build_context(
             db, project_id=uuid.UUID(pid), chapter_seq=state["chapter_seq"],
-            participants=participants, user_instruction=state.get("user_instruction"),
+            user_instruction=state.get("user_instruction"),
             shared_context=shared,
         )
         out = {"context": ctx.model_dump(mode="json")}
@@ -745,6 +751,57 @@ def _load_outline_slice(db: Session, project_id: uuid.UUID, chapter_seq: int) ->
         return None
     stage = covering_item(list(volume.get("stages") or []), chapter_seq)
     return {"objective": outline.get("objective") or "", "volume": volume, "stage": stage}
+
+
+def node_plan_cast(state: ChapterState) -> ChapterState:
+    """规划第一拍（§3 规划的先后顺序）：先定本章出场人物与场景地点，再据此取台账。
+
+    解开「取人物状态需要出场人物、出场人物本是规划产物」的循环：本节点只决策「谁出场、
+    在哪」，随后用这份名单重取召回上下文——人物状态快照、设定实体相关度、事件混合召回
+    的术语三处都依赖它，此前拿的是按姓名排序的前 12 人。plan_chapter 才产出完整计划。
+
+    只在环境未配模型/上游失败时透传 error；replan 会重跑本节点（换一套人或地点重来）。
+    """
+    if state.get("error"):
+        return {}  # 上游 LLM 已失败：透传根因（§6.12）
+    pid = state["project_id"]
+    seq = state["chapter_seq"]
+
+    def _check_cast(content: str) -> dict:
+        data = _coerce_str_lists(_parse_json(content), ChapterCast)
+        cast = ChapterCast(**{k: v for k, v in data.items() if k in ChapterCast.model_fields})
+        return cast.model_dump(mode="json")
+
+    with tenant_session(pid) as db:
+        outline = _load_outline_slice(db, uuid.UUID(pid), seq)
+        # 只给名字不给状态：状态的取用正是本拍之后才发生的事。
+        roster = [str(c.get("name")) for c in state.get("characters", []) if c.get("name")]
+        _, _, cast, err = _llm_checked(
+            db, state, "plan_cast", "Planner", make_chain("planner", db=db, project_id=pid),
+            prompts.cast_messages(state.get("context") or {}, roster, outline=outline),
+            check=_check_cast)
+        if err:
+            return {"error": err}
+        ctx = build_context(
+            db, project_id=uuid.UUID(pid), chapter_seq=seq,
+            participants=list(cast["cast"]), scene_names=list(cast["locations"]),
+            user_instruction=state.get("user_instruction"),
+            shared_context=state.get("shared_context") or {},
+        )
+        # replan 反馈由 reset_replan 写进上一版 context，而重取上下文会把它冲掉——它是本次
+        # 规划必须看见的输入（短上下文其余部分都能从库里重建）。显式带回来并重算估算量。
+        carried = [i for i in (state.get("context") or {}).get("short_context") or []
+                   if i.get("kind") == "replan_feedback"]
+        if carried:
+            ctx.short_context.extend(carried)
+            ctx.token_usage = estimate_tokens(
+                ctx.model_dump(exclude={"token_usage", "recall_stats"}))
+        record_plain(db, project_id=pid, task_id=state.get("task_id"), node="plan_cast",
+                     detail={"cast": cast["cast"], "locations": cast["locations"],
+                             "snapshots": len(ctx.entity_snapshots),
+                             "settings": len(ctx.setting_snapshots),
+                             "recall_stats": ctx.recall_stats})
+    return {"cast": cast, "context": ctx.model_dump(mode="json")}
 
 
 def node_plan_chapter(state: ChapterState) -> ChapterState:

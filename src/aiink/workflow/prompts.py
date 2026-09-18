@@ -33,6 +33,18 @@ SYSTEM_PLAN = """你是长篇网文创作系统的【规划 Agent】。职责：
 - 【前情事件】中的历史相似事件仅供呼应/差异化参照，不得照搬其桥段结构；
 - JSON 数组项、对象字段之间必须使用英文逗号，字符串内部的双引号必须转义。"""
 
+SYSTEM_CAST = """你是长篇网文创作系统的【出场人物 Agent】。职责：在规划情节之前，先定下本章的出场人物与场景地点。
+输出严格 JSON 对象：
+{
+  "cast": ["本章出场的人物名"],
+  "locations": ["本章场景发生的地点名"]
+}
+规则：
+- cast 必须优先取自【现有角色名单】，不要另造名字；确有必要引入新人物时用新名字列出（他没有历史状态可查，属正常）。
+- 宁多勿漏。上一章结尾在场或被提及的人、本章要回收的伏笔牵涉的人、本章要推进的剧情线参与者，都要列上——多列一个人只是多取一份状态，漏列会让后续规划看不到他的当前处境。
+- locations 写本章场景的地点名，优先从【已有设定实体】里选；没有合适的再按世界设定新起名。
+- 只输出 JSON，不要解释文字、不要 markdown 代码块。"""
+
 SYSTEM_WRITE = """你是长篇网文创作系统的【写作 Agent】。依据章节计划写出正文。
 要求：严格遵循注入的设定与硬约束；贴合注入的文风档案与句式禁忌。
 开篇规则：
@@ -313,6 +325,36 @@ def _outline_section(outline: dict | None, *, verbose: bool) -> str:
         parts.append(line)
     parts.append("\n【大纲是方向参考：与已写正文（前情事件/近期上下文）冲突时，以已写正文为准】")
     return "\n".join(parts)
+
+
+def _cast_messages(context: dict, roster: list[str],
+                   outline: dict | None = None) -> list[dict]:
+    """plan_cast 输入：先定本章出场人物与场景地点（§3 规划的先后顺序）。
+
+    角色名单必须给全：cast 要落在真实存在的角色上，否则重取台账时 build_context 对
+    查不到的名字静默跳过，这一拍就白跑了。名单只给名字（不给状态）——状态的取用正是
+    本拍之后才发生的事。
+    """
+    facts = _join(context.get("long_term_facts", []), _render_fact)
+    events = _join(context.get("mid_term_events", []), _render_event)
+    setting_entities = _join(context.get("setting_snapshots", []), _render_setting)
+    short = _join(context.get("short_context", []), _render_short)
+    foreshadows = _join(context.get("open_foreshadows", []), _render_foreshadow)
+    threads = _join(context.get("plot_threads", []), _render_thread)
+    outline_section = _outline_section(outline, verbose=True)
+    system = (
+        SYSTEM_CAST
+        + "\n\n【世界观硬约束】\n" + (facts or "（无）")
+        + "\n【现有角色名单（cast 必须优先从中选）】\n" + ("、".join(roster) or "（无）")
+        + "\n【已有设定实体（locations 优先从中选）】\n" + (setting_entities or "（无）")
+        + outline_section
+        + "\n\n【前情事件】\n" + (events or "（无）")
+        + "\n【开放伏笔（待回收）】\n" + (foreshadows or "（无）")
+        + "\n【活跃剧情线】\n" + (threads or "（无）")
+    )
+    user_parts = ["【近期上下文】\n" + (short or "（无）"), _opening_section(context)]
+    user_parts.append("请输出本章出场人物与场景地点（严格 JSON）。")
+    return [{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(user_parts)}]
 
 
 def _plan_messages(context: dict, batch_goal: str | None = None,
@@ -719,6 +761,12 @@ def book_outline_messages(genre: str, premise: str, chapter_count: int,
 def _tool_prompt_budget() -> int:
     tool_overhead = estimate_tokens({"messages": [], "tools": READ_TOOLS}) - estimate_tokens([])
     return settings.request_token_budget - tool_overhead - 1000
+
+
+def cast_messages(context: dict, roster: list[str],
+                  outline: dict | None = None) -> list[dict]:
+    return fit_prompt(context, lambda c: _cast_messages(c, roster, outline),
+                      settings.request_token_budget - 1000)
 
 
 def plan_messages(context: dict, batch_goal: str | None = None,

@@ -93,6 +93,18 @@ class ChapterPlan(BaseModel):
     transition: ChapterTransition | None = None  # 兼容旧 checkpoint；新规划提示词要求输出
 
 
+class ChapterCast(BaseModel):
+    """本章出场人物与场景地点（规划第一拍，§3）。
+
+    规划拆成有先后顺序的两拍，为的是解开「取人物状态需要出场人物、而出场人物本是规划
+    产物」的循环：第一拍只定人名与地点，据此取台账（人物状态/设定实体/事件召回），
+    第二拍才产出完整章节计划。
+    """
+
+    cast: list[str] = Field(min_length=1, description="本章出场人物名，须优先取自现有角色名单")
+    locations: list[str] = Field(default_factory=list, description="本章场景地点名")
+
+
 class Event(BaseModel):
     """剧情事件（中期记忆，§4）。"""
 

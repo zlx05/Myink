@@ -1,11 +1,15 @@
 """单章子图（spec/state-flow.md §1 内层循环）。
 
-load_state → recall → plan_chapter → write → extract → validate → audit
+load_state → recall → plan_cast → plan_chapter → write → extract → validate → audit
   → route_after_audit（混合路由，§6.11 已确认：规则层优先，LLM 兜语义）：
      ① L1 critical / L2 major（规则层）→ rev < 预算 revise / 预算用尽 persist(needs_review)
      ② 预算用尽 → persist(needs_review)
-     ③ 采纳 AuditVerdict：pass → persist / rewrite → revise / replan → 回 plan_chapter
+     ③ 采纳 AuditVerdict：pass → persist / rewrite → revise / replan → 回 plan_cast
      或 replan_batch → 结束单章子图，批次层读 replan_batch 信号回 batch_plan
+
+规划拆成两拍（§3 先后顺序）：plan_cast 先定本章出场人物与场景地点，据此重取召回上下文
+（人物状态/设定实体/事件术语都依赖它），plan_chapter 才产出完整计划。replan 回 plan_cast
+而非 plan_chapter——要重来的是「谁出场」，不只是「怎么写」。
 """
 
 from __future__ import annotations
@@ -87,6 +91,7 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
     g = StateGraph(ChapterState)
     g.add_node("load_state", nodes.node_load_state)
     g.add_node("recall", nodes.node_recall)
+    g.add_node("plan_cast", nodes.node_plan_cast)
     g.add_node("plan_chapter", nodes.node_plan_chapter)
     g.add_node("plan_gate", nodes.node_plan_gate)
     g.add_node("write", nodes.node_write)
@@ -101,7 +106,8 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
 
     g.add_edge(START, entry)
     g.add_edge("load_state", "recall")
-    g.add_edge("recall", "plan_chapter")
+    g.add_edge("recall", "plan_cast")
+    g.add_edge("plan_cast", "plan_chapter")
     g.add_edge("plan_chapter", "plan_gate")
     g.add_edge("plan_gate", "write")
     g.add_edge("write", "extract")
@@ -119,7 +125,7 @@ def build_chapter_graph(checkpointer=None, *, entry: str = "load_state"):
             "fail": END,
         },
     )
-    g.add_edge("reset_replan", "plan_chapter")
+    g.add_edge("reset_replan", "plan_cast")
     # 修订改变了正文：重新抽取记忆并校验，不能持旧候选/旧报告审核新稿。
     g.add_edge("revise", "extract")
     g.add_edge("persist", "summarize")

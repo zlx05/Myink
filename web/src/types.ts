@@ -92,6 +92,7 @@ export interface TaskControlResponse {
 export type RunNode =
   | 'load_state'
   | 'recall'
+  | 'plan_cast'
   | 'plan_chapter'
   | 'plan_review'
   | 'write'

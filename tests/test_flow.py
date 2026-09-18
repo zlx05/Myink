@@ -37,7 +37,9 @@ class StubProvider(ModelProvider):
                  tools=None, disable_thinking=False):
         user_content = "\n".join(m.get("content", "") for m in messages)
         node = self._infer_node(messages)
-        if node == "plan":
+        if node == "cast":
+            content = '{"cast":["林砚"],"locations":["黑市"]}'
+        elif node == "plan":
             content = (
                 '{"goals":["推进主线"],"scenes":[],"characters":[],'
                 '"hooks_to_plant":[],"hooks_to_resolve":[],'
@@ -77,6 +79,8 @@ def _infer_node(messages):
     # 用 system 唯一标记判定节点（不能用泛词如"修订"——write 注入的召回上下文
     # 可能带旧章内容里的"修订"字样，会把 write 误判成 revise，stub 就永远不触发失败）
     sys = messages[0]["content"] if messages else ""
+    if "出场人物 Agent" in sys:
+        return "cast"
     if "规划 Agent" in sys:
         return "plan"
     if "记忆抽取" in sys:

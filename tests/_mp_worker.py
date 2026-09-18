@@ -55,7 +55,9 @@ class StubProvider(ModelProvider):
             _R.delete("mp:active")
 
         node = self._infer_node(messages)
-        if node == "plan":
+        if node == "cast":
+            content = '{"cast":["林砚"],"locations":["黑市"]}'
+        elif node == "plan":
             content = (
                 '{"goals":["推进主线"],"scenes":[],"characters":[],'
                 '"hooks_to_plant":[],"hooks_to_resolve":[],'
@@ -86,6 +88,8 @@ class StubProvider(ModelProvider):
 
     def _infer_node(self, messages):
         sys_msg = messages[0]["content"] if messages else ""
+        if "出场人物 Agent" in sys_msg:
+            return "cast"
         if "规划 Agent" in sys_msg:
             return "plan"
         if "记忆抽取" in sys_msg:
