@@ -1,5 +1,7 @@
-// 设定浏览页（§7.11）：人物卡片（静态基底 + 当前状态台账）+ 世界观（realm_order 阶段箭头）+
-// 硬约束 + 势力/地点。数据 GET world + GET characters 并行；无设定 → 空态不报错。
+// 设定浏览页（§7.11）：人物卡片（静态基底 + 当前状态台账 + 展开后懒加载状态变化时间线）+
+// 世界观（realm_order 阶段箭头）+ 硬约束 + 势力/地点 + 事件台账 + 章节记忆。
+// 数据 GET world/characters/entities/foreshadows/chapters/outline/events 并行；
+// 人物状态历史按卡片首次展开单独拉取（一次打 N 个请求不值当）。无设定 → 空态不报错。
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
@@ -11,9 +13,11 @@ import type {
   BookOutline,
   ChapterMeta,
   CharacterCard,
+  CharacterStateChange,
   Foreshadow,
   LoreEntity,
   Project,
+  StoryEvent,
   WorldView,
 } from '../types'
 import styles from './LorePage.module.css'
@@ -89,14 +93,41 @@ function WorldRules({ world_rules }: { world_rules: Record<string, unknown> }) {
 
 function CharacterCardBlock({
   card,
+  projectId,
   expanded,
   onToggle,
 }: {
   card: CharacterCard
+  projectId: string
   expanded: boolean
   onToggle: () => void
 }) {
   const stateRows = Object.entries(card.state)
+  // 状态变化历史（§7.7 追加式台账全量，含已失效行）：首次展开才拉，loaded 兼作「只拉一次」闸
+  const [history, setHistory] = useState<CharacterStateChange[] | null>(null)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!expanded || loaded) return
+    let alive = true
+    void api
+      .getCharacterStateHistory(projectId, card.id)
+      .then((rows) => {
+        if (!alive) return
+        setHistory(rows)
+        setLoaded(true)
+      })
+      .catch((err: unknown) => {
+        if (!alive) return
+        setHistoryError(formatApiError(err, '状态变化加载失败'))
+        setLoaded(true)
+      })
+    return () => {
+      alive = false
+    }
+  }, [expanded, loaded, projectId, card.id])
+
   return (
     <article className={`panel ${styles.card}`}>
       <button type="button" className={styles.cardHead} onClick={onToggle}>
@@ -147,6 +178,31 @@ function CharacterCardBlock({
               ))}
             </dl>
           )}
+          <span className={styles.cardLabel}>状态变化</span>
+          {historyError ? (
+            <div className="banner banner-error">{historyError}</div>
+          ) : history === null ? (
+            <div className="empty">加载中…</div>
+          ) : history.length === 0 ? (
+            <div className="empty">暂无状态变化记录。</div>
+          ) : (
+            <ol className={styles.flow}>
+              {history.map((h, i) => (
+                <li key={`${h.field}-${h.chapter_seq}-${i}`} className={styles.step}>
+                  <span className={h.valid_to == null ? styles.dotLive : styles.dot} />
+                  <div className={styles.stepMain}>
+                    <span className={styles.stepHead}>
+                      <strong>{STATE_LABELS[h.field] ?? h.field}</strong>
+                      <span>第 {h.source_chapter} 章</span>
+                    </span>
+                    <span className={styles.stepChange}>
+                      {h.old_value ? `${h.old_value} → ${h.new_value ?? '—'}` : (h.new_value ?? '—')}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
         </div>
       )}
     </article>
@@ -163,6 +219,7 @@ export default function LorePage() {
   const [entities, setEntities] = useState<LoreEntity[]>([])
   const [foreshadows, setForeshadows] = useState<Foreshadow[]>([])
   const [chapters, setChapters] = useState<ChapterMeta[]>([])
+  const [events, setEvents] = useState<StoryEvent[]>([])
   const [outline, setOutline] = useState<BookOutline | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [banner, setBanner] = useState<string | null>(null)
@@ -170,7 +227,7 @@ export default function LorePage() {
   const load = useCallback(async () => {
     setBanner(null)
     try {
-      const [proj, w, ch, ent, fo, chaps, ol] = await Promise.all([
+      const [proj, w, ch, ent, fo, chaps, ol, ev] = await Promise.all([
         api.listProjects(),
         api.getWorld(projectId),
         api.getCharacters(projectId),
@@ -178,6 +235,7 @@ export default function LorePage() {
         api.listForeshadows(projectId),
         api.listChapters(projectId),
         api.getOutline(projectId),
+        api.listEvents(projectId),
       ])
       setProjects(proj)
       setWorld(w)
@@ -186,6 +244,7 @@ export default function LorePage() {
       setForeshadows(fo)
       setChapters(chaps)
       setOutline(ol.outline)
+      setEvents(ev)
     } catch (err) {
       setBanner(formatApiError(err, '设定加载失败'))
     }
@@ -303,6 +362,7 @@ export default function LorePage() {
                   <CharacterCardBlock
                     key={c.id}
                     card={c}
+                    projectId={projectId}
                     expanded={expanded.has(c.id)}
                     onToggle={() => toggle(c.id)}
                   />
@@ -338,6 +398,28 @@ export default function LorePage() {
                       )}
                     </li>
                   ))}
+              </ul>
+            )}
+          </section>
+
+          <section className={`panel ${styles.section}`}>
+            <h2 className={styles.sectionTitle}>事件台账</h2>
+            {events.length === 0 ? (
+              <div className="empty">暂无事件。写作后各章抽取的事件自动落此台账。</div>
+            ) : (
+              <ul className={styles.entityList}>
+                {events.map((e) => (
+                  <li key={e.id} className={styles.entityItem}>
+                    <span className={styles.entityHead}>
+                      <span className={styles.entityName}>第 {e.source_chapter} 章</span>
+                      {e.promoted_to_fact && <span className="badge badge-accent">已入事实</span>}
+                      {e.participants.length > 0 && (
+                        <span className={styles.entityDesc}>{e.participants.join('、')}</span>
+                      )}
+                    </span>
+                    <span className={styles.entityDesc}>{e.summary}</span>
+                  </li>
+                ))}
               </ul>
             )}
           </section>

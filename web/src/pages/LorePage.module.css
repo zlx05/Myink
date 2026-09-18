@@ -323,3 +323,80 @@
   font-size: var(--text-small);
   margin-left: var(--space-2);
 }
+
+/* 人物状态变化时间线（§7.7 追加式台账：old_value → new_value @ 来源章）。
+   竖线圆点模式移植自 TaskTimeline，但其硬编码 hex 属于主题违反，此处一律走主题变量。 */
+.flow {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+}
+
+.step:last-child {
+  padding-bottom: 0;
+}
+
+.step:not(:last-child)::before {
+  position: absolute;
+  top: 12px;
+  bottom: 0;
+  left: 5px;
+  width: 1px;
+  background: var(--line-strong);
+  content: '';
+}
+
+.dot,
+.dotLive {
+  position: relative;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--surface-1);
+  box-shadow: 0 0 0 3px var(--surface-1);
+}
+
+/* 当前生效行（valid_to 为空）——时间线上唯一的高亮点 */
+.dotLive {
+  border-color: var(--accent);
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.stepMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stepHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--ink);
+}
+
+.stepHead span {
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.stepChange {
+  color: var(--ink-subtle);
+  font-size: var(--text-small);
+  word-break: break-word;
+}

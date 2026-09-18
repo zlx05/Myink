@@ -613,6 +613,32 @@ export interface LoreEntity {
   first_seen_chapter: number | null
 }
 
+/** 事件台账单条（§7.4 中期记忆全量：抽取节点落库后此前只写不读）。
+ * participants 后端已把 canonical 人物 UUID 翻成人名，已删角色被丢弃。 */
+export interface StoryEvent {
+  id: string
+  summary: string
+  participants: string[]
+  location_id: string | null
+  timeline: string | null
+  source_chapter: number
+  confidence: number
+  promoted_to_fact: boolean
+}
+
+/** 人物状态台账变更单条（§7.7 追加式：old_value → new_value @ 第 N 章）。
+ * 含 valid_to 非空的已失效行——这正是 get_character_state 压平时丢掉的变化历史。 */
+export interface CharacterStateChange {
+  field: string
+  old_value: string | null
+  new_value: string | null
+  chapter_seq: number
+  source_chapter: number
+  confidence: number
+  valid_from: number | null
+  valid_to: number | null
+}
+
 /** 扫榜单条（§10：外部榜单已 sanitize allowlist 字段，只当灵感参考；rank 从 1 起） */
 export interface RankingItem {
   rank: number

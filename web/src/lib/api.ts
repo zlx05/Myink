@@ -5,6 +5,7 @@ import type {
   AuthResponse,
   CandidateActionResponse,
   CharacterCard,
+  CharacterStateChange,
   ChapterDetail,
   ChapterMeta,
   ChapterPlan,
@@ -44,6 +45,7 @@ import type {
   StyleDraft,
   StyleProfile,
   StyleProfileResponse,
+  StoryEvent,
   TaskControlResponse,
   TaskDetail,
   TaskSummary,
@@ -291,6 +293,24 @@ export const api = {
 
   // 设定实体（§7.11 ④ 自动建档：武器/功法/技能/地点，低风险正文抽取自动登记）。
   listEntities: (pid: string) => request<LoreEntity[]>('GET', `/projects/${pid}/entities`),
+
+  // 事件台账（§7.4 中期记忆全量：此前事件只写不读）。可按章号区间过滤。
+  listEvents: (pid: string, fromChapter?: number, toChapter?: number) => {
+    const q = [
+      fromChapter != null ? `from_chapter=${fromChapter}` : '',
+      toChapter != null ? `to_chapter=${toChapter}` : '',
+    ]
+      .filter(Boolean)
+      .join('&')
+    return request<StoryEvent[]>('GET', `/projects/${pid}/events${q ? `?${q}` : ''}`)
+  },
+
+  // 人物状态变化历史（§7.7 追加式台账全量，含已失效行）。
+  getCharacterStateHistory: (pid: string, characterId: string) =>
+    request<CharacterStateChange[]>(
+      'GET',
+      `/projects/${pid}/characters/${characterId}/state-history`,
+    ),
 
   // 世界拓扑全量（§9 图谱：4 类节点 + 人物关系/地点层级边，ECharts 力导向渲染）。
   listGraph: (pid: string) => request<WorldGraphResponse>('GET', `/projects/${pid}/graph`),
