@@ -213,6 +213,22 @@ def _render_entity(item: dict) -> str:
     return line
 
 
+# 设定实体类型中文名（§7.11 ④）。entity_type 没有 DB CHECK（白名单只在写侧），
+# 渲染器必须容忍白名单外的历史值，取不到就原样显示。
+_SETTING_TYPE_LABELS = {"item": "物品/武器", "skill": "功法/技能", "location": "地点"}
+
+
+def _render_setting(item: dict) -> str:
+    """渲染设定实体（§7.11 ④）。description 可能显式为 None，不能直接拼接。"""
+    etype = _SETTING_TYPE_LABELS.get(item.get("entity_type")) or item.get("entity_type") or "设定"
+    seen = item.get("first_seen_chapter")
+    line = f"- [{etype}] {item.get('name', '')}"
+    if seen:
+        line += f"（首见于第 {seen} 章）"
+    desc = (item.get("description") or "").strip()
+    return f"{line} {desc}" if desc else line
+
+
 def _render_short(item: dict) -> str:
     return f"- [{item.get('kind')}] {item.get('text') or item.get('summary') or item.get('tail') or ''}"
 
@@ -304,6 +320,7 @@ def _plan_messages(context: dict, batch_goal: str | None = None,
     facts = _join(context.get("long_term_facts", []), _render_fact)
     events = _join(context.get("mid_term_events", []), _render_event)
     entities = _join(context.get("entity_snapshots", []), _render_entity)
+    setting_entities = _join(context.get("setting_snapshots", []), _render_setting)
     short = _join(context.get("short_context", []), _render_short)
     foreshadows = _join(context.get("open_foreshadows", []), _render_foreshadow)
     threads = _join(context.get("plot_threads", []), _render_thread)
@@ -315,6 +332,7 @@ def _plan_messages(context: dict, batch_goal: str | None = None,
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
         + "\n【前情事件】\n" + (events or "（无）")
         + "\n【出场人物状态快照】\n" + (entities or "（无）")
+        + "\n【设定实体】\n" + (setting_entities or "（无）")
         + outline_section
         + "\n\n【开放伏笔（待回收，hooks_to_resolve 必须从中选，收/延/弃要明确）】\n" + (foreshadows or "（无）")
         + "\n【活跃剧情线（hooks_to_plant 可补新钩子，但主线推进优先）】\n" + (threads or "（无）")
@@ -412,6 +430,7 @@ def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = N
     """
     facts = _join(context.get("long_term_facts", []), _render_fact)
     entities = _join(context.get("entity_snapshots", []), _render_entity)
+    setting_entities = _join(context.get("setting_snapshots", []), _render_setting)
     short = _join(context.get("short_context", []), _render_short)
     style = _style_section(style_profile, target_words)
     genre = _genre_section(genre_pack)
@@ -421,6 +440,7 @@ def _write_messages(context: dict, plan: dict, *, style_profile: dict | None = N
         SYSTEM_WRITE
         + "\n\n【世界观硬约束】\n" + (facts or "（无）")
         + "\n【人物状态快照】\n" + (entities or "（无）")
+        + "\n【设定实体】\n" + (setting_entities or "（无）")
         + (f"\n\n【本书题材（project_settings.genre_pack）】\n{genre}" if genre else "")
         + (f"\n\n【文风要求（project_settings.style_profile）】\n{style}" if style else "")
         + outline_section
@@ -524,6 +544,7 @@ def _audit_messages(draft: str, plan: dict, context: dict, chapter_seq: int,
         + "\n\n【近期上下文】\n" + (_join(context.get("short_context", []), _render_short) or "（无）")
         + "\n\n" + _opening_section(context)
         + "\n\n【人物状态快照】\n" + (_join(context.get("entity_snapshots", []), _render_entity) or "（无）")
+        + "\n【设定实体】\n" + (_join(context.get("setting_snapshots", []), _render_setting) or "（无）")
         + _taboo_hint(genre_pack)
         + "\n\n请审核本章并输出路由决策（严格 JSON）。"
     )

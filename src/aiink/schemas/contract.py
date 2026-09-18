@@ -243,6 +243,7 @@ class RetrievedContext(BaseModel):
     short_context: list[dict] = Field(default_factory=list, description="上一章摘要+候选事件+本章开头+最近场景")
     recent_openings: list[dict] = Field(default_factory=list, description="历史章开头 [{chapter, text}]，仅供差异化比较")
     entity_snapshots: list[dict] = Field(default_factory=list, description="人物/势力/地点当前状态快照")
+    setting_snapshots: list[dict] = Field(default_factory=list, description="设定实体快照（物品/功法/地点，entities 表 §7.11 ④ 自动建档）[{entity_id, entity_type, name, description, first_seen_chapter}]")
     open_foreshadows: list[dict] = Field(default_factory=list, description="开放伏笔 [{description, trigger, planted_chapter, status}]（§7.9，plan_chapter 消费决定收/延/弃）")
     plot_threads: list[dict] = Field(default_factory=list, description="活跃剧情线 [{name, kind, status, progress}]（线程债务治理输入）")
     reflexions: list[dict] = Field(default_factory=list, description="本书写作经验（reflexion 注入，§8.9）[{content, lesson_type, category, source_chapter}]")

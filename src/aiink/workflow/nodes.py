@@ -632,6 +632,7 @@ def node_recall(state: ChapterState) -> ChapterState:
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="recall",
                      detail={"facts": len(ctx.long_term_facts), "events": len(ctx.mid_term_events),
                              "snapshots": len(ctx.entity_snapshots),
+                             "settings": len(ctx.setting_snapshots),
                              "foreshadows": len(ctx.open_foreshadows),
                              "threads": len(ctx.plot_threads), "context_tokens_est": ctx.token_usage})
         return out

@@ -320,6 +320,7 @@
     "short_context":    { "type": "array", "items": { "type": "object" }, "description": "上一章摘要 + 上一章候选事件 + 本章开头 + 最近场景（plan.md §7.1）" },
     "recent_openings":  { "type": "array", "items": { "type": "object" }, "description": "最近 4 个历史章开头 [{chapter, text}]；仅供差异化比较，不作接续位置" },
     "entity_snapshots": { "type": "array", "items": { "type": "object" }, "description": "人物/势力/地点当前状态快照（台账最新）" },
+    "setting_snapshots":{ "type": "array", "items": { "type": "object" }, "description": "设定实体快照（§7.11 ④ 物品/功法/地点，entities 表）：entity_id / entity_type / name / description / first_seen_chapter；按本章场景地点名相关度取样，上限 12 条。注入 plan/write/audit，**不注入 extract**——extract 的台账快照块用于校准 character_state.old_value 与 relation_change 候选，掺入非人物行会招来假候选" },
     "reflexions":       { "type": "array", "items": { "type": "object" }, "description": "在效写作经验（§8.9 reflexion）：content / lesson_type / category / source_chapter；上限 8 条" },
     "token_usage":      { "type": "integer" },
     "recall_stats":     { "type": "object", "description": "事件混合召回占比（§7.2/§16，2026-08-12 落地）：{ vector_hits, keyword_hits, fused_total, recall_tokens_est, context_tokens_est, share }；无混合召回时为空对象 {}" }

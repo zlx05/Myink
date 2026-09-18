@@ -2,6 +2,7 @@
 
 阶段 1 主链路（关系查询，防走偏的第一道防线）：
 - 硬约束（恒在 Top-K）+ 最近事件 + 出场人物状态台账快照 + 上一章摘要/开头；
+- 设定实体快照（§7.11 ④ 物品/功法/地点，按本章场景地点名相关度取样）；
 - 开放伏笔 + 活跃剧情线注入（§7.9：plan_chapter 据此决定收/延/弃，防伏笔烂尾）。
 
 向量召回（§15 阶段 1「最小向量召回」）：bge-m3 对上一章摘要做语义近邻，
@@ -65,6 +66,8 @@ _MAX_LESSONS = 8
 _MAX_KEYWORD_TERMS = 12
 # 上一章结尾片段上限（字）：只够本章接续落点，不把全文喂进上下文（§11 防开头雷同）
 _TAIL_CAP = 800
+# 设定实体注入上限（§7.11 ④：物品/功法/地点此前永远进不了提示词）
+_MAX_SETTINGS = 12
 
 
 def _tail_of(content: str | None) -> str:
@@ -83,6 +86,65 @@ def _tail_of(content: str | None) -> str:
     if 0 < idx <= 80:
         tail = tail[idx + 1:].lstrip()
     return tail
+
+
+def _chapter_scene_names(session: Session, project_id: uuid.UUID, chapter_seq: int) -> set[str]:
+    """本章计划里的场景地点名（§11 逐章计划）；本章取不到计划则回退上一章。
+
+    plan["scenes"][*]["location_id"] 存的是地点**名**不是 uuid（章节计划 schema），
+    可直接与 Entity.canonical_name 比对。重写本章时本章计划已落库；首次生成时只有上一章。
+    """
+    for seq in ([chapter_seq, chapter_seq - 1] if chapter_seq > 1 else [chapter_seq]):
+        outline = repo.get_chapter_outline(session, project_id, seq)
+        plan = (outline.plan if outline else None) or {}
+        names = {
+            str(s.get("location_id")).strip()
+            for s in (plan.get("scenes") or [])
+            if isinstance(s, dict) and s.get("location_id")
+        }
+        if names:
+            return names
+    return set()
+
+
+def _setting_snapshots(session: Session, project_id: uuid.UUID, chapter_seq: int,
+                       snapshots: list[dict]) -> list[dict]:
+    """设定实体快照（§7.11 ④：物品/功法/地点；此前 Entity 永远进不了任何提示词）。
+
+    1. 门槛——first_seen_chapter 缺省或早于本章才可用：第 5 章首见的武器不能出现在第 3 章
+       的提示词里。在 Python 侧过滤，避开 JSON 算子的方言差异。
+    2. 排序——先命中本章（缺则上一章）计划场景地点名的实体，其余按创建时间倒序补足。
+       纯「最近创建」在高章号下会灌进一堆无关物品。
+    3. 去重——按 (entity_type, canonical_name)；已进人物快照的同名实体排除（由
+       entity_snapshots 负责渲染，避免同一名字出现两次）。
+    """
+    rows = repo.get_entities(session, project_id)
+    if not rows:
+        return []
+    scene_names = _chapter_scene_names(session, project_id, chapter_seq)
+    character_names = {s.get("name") for s in snapshots}
+    picked: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+    for hit_scene in (True, False):
+        for e in rows:
+            props = e.properties or {}
+            name = (e.canonical_name or "").strip()
+            key = (e.entity_type, name)
+            if not name or key in seen or name in character_names:
+                continue
+            # 非 int 一律当「未知首见章」放行（JSON 列无 schema，不因此报错）
+            first_seen = props.get("first_seen_chapter")
+            if isinstance(first_seen, int) and first_seen >= chapter_seq:
+                continue
+            if (name in scene_names) != hit_scene:
+                continue
+            seen.add(key)
+            picked.append({
+                "entity_id": str(e.id), "entity_type": e.entity_type, "name": name,
+                "description": (props.get("description") or "")[:_CONTENT_CAP],
+                "first_seen_chapter": first_seen if isinstance(first_seen, int) else None,
+            })
+    return picked[: _MAX_SETTINGS]
 
 
 def _merge_settings_constraints(session: Session, project_id: uuid.UUID,
@@ -182,6 +244,12 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
                 "state": state, "personality": ch.personality, "relations": relations,
             })
 
+    # 设定实体快照（§7.11 ④：物品/功法/地点）。此前 Entity 只写不读——自动建档的设定
+    # 永远进不了任何提示词，等于功能死路。单独成字段而**不并进 entity_snapshots**：
+    # extract 节点的【当前台账快照】是给 LLM 校准 character_state.old_value / 产出
+    # relation_change 候选用的，掺进非人物行会招来追不上的假候选。
+    settings_out = _setting_snapshots(session, project_id, chapter_seq, snapshots)
+
     # 开放伏笔 + 活跃剧情线（§7.9 防伏笔烂尾：plan_chapter 输入，决定收/延/弃）
     foreshadows_out = [
         {"foreshadow_id": str(f.id), "description": f.description, "trigger": f.trigger,
@@ -224,6 +292,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         short_context=short,
         recent_openings=openings,
         entity_snapshots=snapshots,
+        setting_snapshots=settings_out,
         open_foreshadows=foreshadows_out,
         plot_threads=threads_out,
         reflexions=lessons_out,

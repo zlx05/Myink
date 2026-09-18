@@ -18,6 +18,7 @@ from aiink.models import (
     ChapterVersion,
     Character,
     CharacterState,
+    Entity,
     Event,
     Fact,
     Foreshadow,
@@ -163,6 +164,17 @@ def get_active_lessons(session: Session, project_id: uuid.UUID) -> list[WritingL
         select(WritingLesson)
         .where(WritingLesson.project_id == project_id, WritingLesson.status == "active")
         .order_by(WritingLesson.recurrence_count.desc(), WritingLesson.created_at.desc())
+    ).scalars())
+
+
+def get_entities(session: Session, project_id: uuid.UUID) -> list[Entity]:
+    """设定实体（§7.11 ④ 自动建档：武器/功法/技能/地点），创建时间倒序。
+
+    排序在取数层固定，recall 的相关度重排建立在此顺序之上（未命中场景地点名的按此补足）。
+    """
+    return list(session.execute(
+        select(Entity).where(Entity.project_id == project_id)
+        .order_by(Entity.created_at.desc())
     ).scalars())
 
 
