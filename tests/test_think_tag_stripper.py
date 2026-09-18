@@ -1,6 +1,6 @@
 """对齐 inkos think-tag-stripper：只剥响应起始处的完整 think 块。"""
 
-from aiink.providers.think_tag_stripper import (
+from myink.providers.think_tag_stripper import (
     LeadingThinkTagStripper,
     isolate_response_body,
     looks_like_unclosed_think,

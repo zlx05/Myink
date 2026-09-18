@@ -1,8 +1,8 @@
-# Ai Ink Design System
+# Myink Design System
 
 ## Design Read
 
-Ai Ink is a focused long-form fiction workbench for authors. The interface should feel precise, quiet, and dependable: a dark application shell for project navigation and system feedback, with a calm reading surface for writing. It is a product UI, not a marketing dashboard.
+Myink is a focused long-form fiction workbench for authors. The interface should feel precise, quiet, and dependable: a dark application shell for project navigation and system feedback, with a calm reading surface for writing. It is a product UI, not a marketing dashboard.
 
 ## Direction
 

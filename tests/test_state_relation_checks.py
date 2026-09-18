@@ -14,11 +14,11 @@ from __future__ import annotations
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.models import CharacterState, Relation
-from aiink.schemas import MutationCandidate
-from aiink.validation.l1 import L1Validator
-from aiink.workflow import nodes
+from myink.db import tenant_session
+from myink.models import CharacterState, Relation
+from myink.schemas import MutationCandidate
+from myink.validation.l1 import L1Validator
+from myink.workflow import nodes
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 

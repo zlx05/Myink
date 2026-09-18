@@ -9,17 +9,17 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from aiink.db import tenant_session
-from aiink.models import Chapter, GlobalAuditReport, VolumeOutline
-from aiink.providers.base import ModelResponse
-from aiink.validation import global_audit as ga
+from myink.db import tenant_session
+from myink.models import Chapter, GlobalAuditReport, VolumeOutline
+from myink.providers.base import ModelResponse
+from myink.validation import global_audit as ga
 
 from test_flow import StubProvider
 
 
 @pytest.fixture(scope="module", autouse=True)
 def _ensure_audit_reports_table():
-    from aiink.db import ensure_global_audit_reports
+    from myink.db import ensure_global_audit_reports
 
     ensure_global_audit_reports()
 
@@ -220,10 +220,10 @@ def test_report_persisted_and_marker_advances(temp_project, monkeypatch):
 
 
 def test_batch_summary_surfaces_metrics(temp_project, monkeypatch):
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
-    from aiink.workflow.batch_graph import build_batch_graph
-    from aiink.workflow.chapter_graph import build_chapter_graph
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
+    from myink.workflow.batch_graph import build_batch_graph
+    from myink.workflow.chapter_graph import build_chapter_graph
 
     _seed_outline(temp_project, end=5)
     monkeypatch.setattr(bg_mod, "settings", types.SimpleNamespace(audit_interval=1))
@@ -259,7 +259,7 @@ class _BatchPlanStub:
 
 
 def test_below_threshold_no_report(temp_project, monkeypatch):
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.workflow.batch_graph as bg_mod
 
     _seed_chapter(temp_project, 1, "林砚静观云海。")
     monkeypatch.setattr(ga, "make_chain", lambda role, **_kwargs: (_ for _ in ()).throw(
@@ -271,7 +271,7 @@ def test_below_threshold_no_report(temp_project, monkeypatch):
 
 
 def test_endpoint_global_audit(temp_project, monkeypatch):
-    from aiink.api.routes_global_audit import trigger_global_audit
+    from myink.api.routes_global_audit import trigger_global_audit
 
     _seed_outline(temp_project, end=2)
     _seed_chapter(temp_project, 1, "林砚静观云海。")
@@ -286,7 +286,7 @@ def test_endpoint_global_audit(temp_project, monkeypatch):
 
 
 def test_endpoint_no_chapters_400(temp_project, monkeypatch):
-    from aiink.api.routes_global_audit import trigger_global_audit
+    from myink.api.routes_global_audit import trigger_global_audit
 
     with pytest.raises(HTTPException) as ei:
         trigger_global_audit(temp_project)
@@ -294,7 +294,7 @@ def test_endpoint_no_chapters_400(temp_project, monkeypatch):
 
 
 def test_endpoint_llm_failure_502(temp_project, monkeypatch):
-    from aiink.api.routes_global_audit import trigger_global_audit
+    from myink.api.routes_global_audit import trigger_global_audit
 
     _seed_outline(temp_project, end=1)
     _seed_chapter(temp_project, 1, "林砚静观云海。")

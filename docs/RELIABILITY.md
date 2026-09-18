@@ -22,7 +22,7 @@
 - 真实模型长篇合成评测：先生成 2841 字，加入“现实人物瞬移”的错误设定后人工拒绝，修订为 3283 字，错误句移除，重新抽取/校验/审核通过。
 - 真实模型逻辑正反例 10/10：首次来访、旧物毁坏、承诺未兑现、能力前置条件、身份归属；每类另有合法续写/替换/修复对照。
 - 9 月 8 日版本已部署并在浏览器验收：原项目章节仍在，历史任务可见 pass 决策，候选池可见处理说明及最近评审记录。
-- 9 月 10 日交互迭代已覆盖到当前 `aiink-gateway` 静态目录并构建 `aiink-gateway:local`。localhost 返回新资源；`/healthz` 与 `/readyz` 均为 ok。真实第二章从 31 条原始记录切到最后一次执行并归并为 9 个可读阶段，费用与 token 汇总保持一致。
+- 9 月 10 日交互迭代已覆盖到当前 `myink-gateway` 静态目录并构建 `myink-gateway:local`。localhost 返回新资源；`/healthz` 与 `/readyz` 均为 ok。真实第二章从 31 条原始记录切到最后一次执行并归并为 9 个可读阶段，费用与 token 汇总保持一致。
 
 机器记录：[reliability-verification.json](evaluations/reliability-verification.json)、[workflow-recovery.json](evaluations/workflow-recovery.json)、[logic-smoke.json](evaluations/logic-smoke.json)。复测入口：`scripts/eval-workflow-recovery.py --live`（仅隔离测试库）、`scripts/eval-logic.py --live`。
 

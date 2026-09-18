@@ -14,9 +14,9 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from aiink.db import tenant_session
-from aiink.memory.recall import _MAX_SETTINGS, build_context
-from aiink.models import Character, Entity
+from myink.db import tenant_session
+from myink.memory.recall import _MAX_SETTINGS, build_context
+from myink.models import Character, Entity
 
 _BASE = datetime(2026, 1, 1, tzinfo=timezone.utc)
 

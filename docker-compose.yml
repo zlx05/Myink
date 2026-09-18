@@ -1,36 +1,36 @@
-# Ai Ink 阶段 5 首切：一键启动全部服务（PostgreSQL+pgvector / Redis / Python API / Worker / Go 网关）。
+# Myink 阶段 5 首切：一键启动全部服务（PostgreSQL+pgvector / Redis / Python API / Worker / Go 网关）。
 # 用法：docker compose up -d --build  →  访问 http://localhost:8080（网关静态托管前端，同源出页面+API+SSE）。
-# 首次初始化：pg 挂载 docker/initdb 建 aiink_app 角色（NOBYPASSRLS）；api 容器 command 先跑 `aiink init`
+# 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 容器 command 先跑 `myink init`
 # （幂等：建表 + RLS + demo 种子）再起 uvicorn。无 key 也能启动看界面；生成请在前端「环境配置」填模型 Key。
-name: aiink
+name: myink
 
 services:
-  aiink-pg:
+  myink-pg:
     # 国内网络 daocloud 前缀更稳（docker.io 直连超时）；境外可用 PG_IMAGE=pgvector/pgvector:pg16 覆盖
     image: ${PG_IMAGE:-docker.m.daocloud.io/pgvector/pgvector:pg16}
-    container_name: aiink-pg
+    container_name: myink-pg
     environment:
-      POSTGRES_USER: aiink
-      POSTGRES_PASSWORD: aiink
-      POSTGRES_DB: aiink
+      POSTGRES_USER: myink
+      POSTGRES_PASSWORD: myink
+      POSTGRES_DB: myink
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      # 显式 volume 名避开手工时代的 aiink_pgdata（避免意外复用旧数据导致 initdb 角色脚本不执行）；
-      # 旧数据留在原 volume 不动，如需找回可手动挂回
+      # 显式 volume 名：更名 Myink 时数据卷从旧的 aiink_pgdata_v2 复制迁移而来（库/角色同步改名）；
+      # 更早手工时代的 aiink_pgdata 卷仍在原地未动，如需找回可手动挂回
       - pgdata:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U aiink -d aiink"]
+      test: ["CMD-SHELL", "pg_isready -U myink -d myink"]
       interval: 3s
       timeout: 3s
       retries: 30
     restart: unless-stopped
 
-  aiink-redis:
+  myink-redis:
     # 国内网络 daocloud 前缀更稳；境外可用 REDIS_IMAGE=redis:7-alpine 覆盖
     image: ${REDIS_IMAGE:-docker.m.daocloud.io/library/redis:7-alpine}
-    container_name: aiink-redis
+    container_name: myink-redis
     ports:
       - "127.0.0.1:6380:6379"
     healthcheck:
@@ -41,18 +41,18 @@ services:
     restart: unless-stopped
 
   # 阶段 6：RabbitMQ 任务队列（替代 Redis Streams 主队列 + ZSET 延迟 + 网关 dispatcher）。
-  # guest/guest 仅限 loopback，compose 网络内必须建真实用户 aiink/aiink（RABBITMQ_DEFAULT_USER/PASS
+  # guest/guest 仅限 loopback，compose 网络内必须建真实用户 myink/myink（RABBITMQ_DEFAULT_USER/PASS
   # 仅对全新数据卷生效）；拓扑（主队列 x-max-priority + DLX / 延迟 TTL+DLX / 死信）由
   # Go/Python 三端幂等声明，参数变更需清 rabbitmq-data 卷否则 PRECONDITION_FAILED。
-  aiink-rabbitmq:
+  myink-rabbitmq:
     image: ${RABBITMQ_IMAGE:-docker.m.daocloud.io/library/rabbitmq:3.13-management}
-    container_name: aiink-rabbitmq
+    container_name: myink-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: aiink
-      RABBITMQ_DEFAULT_PASS: aiink
+      RABBITMQ_DEFAULT_USER: myink
+      RABBITMQ_DEFAULT_PASS: myink
     ports:
       - "127.0.0.1:5672:5672"
-      - "127.0.0.1:15672:15672" # Management UI（aiink/aiink）
+      - "127.0.0.1:15672:15672" # Management UI（myink/myink）
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - ./docker/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
@@ -63,10 +63,10 @@ services:
       retries: 30
     restart: unless-stopped
 
-  # Python API：容器内先 `aiink init`（幂等）再起 uvicorn（仅内部监听，网关转发入口）。
+  # Python API：容器内先 `myink init`（幂等）再起 uvicorn（仅内部监听，网关转发入口）。
   # env_file 注入 .env（JWT / 加密主密钥等）；environment 显式覆盖网络相关项
   # （compose 优先级 environment > env_file；本地 localhost 串在容器网络内必须换服务名）。
-  aiink-api:
+  myink-api:
     build:
       context: .
       dockerfile: Dockerfile
@@ -74,15 +74,15 @@ services:
         # 国内网络：基础镜像 / pip 依赖走国内源（Dockerfile 默认 docker.io / pypi.org；阿里云对 torch 等大文件更稳）
         PYTHON_IMAGE: docker.m.daocloud.io/library/python:3.12-slim
         PIP_INDEX_URL: https://mirrors.aliyun.com/pypi/simple/
-    image: aiink-api:local
-    container_name: aiink-api
+    image: myink-api:local
+    container_name: myink-api
     env_file: .env
     environment:
       APP_ENV: dev
-      DATABASE_URL: postgresql+psycopg://aiink_app:aiink@aiink-pg:5432/aiink
-      ADMIN_DATABASE_URL: postgresql+psycopg://aiink:aiink@aiink-pg:5432/aiink
-      REDIS_URL: redis://aiink-redis:6379/0
-      AMQP_URL: amqp://aiink:aiink@aiink-rabbitmq:5672/
+      DATABASE_URL: postgresql+psycopg://myink_app:myink@myink-pg:5432/myink
+      ADMIN_DATABASE_URL: postgresql+psycopg://myink:myink@myink-pg:5432/myink
+      REDIS_URL: redis://myink-redis:6379/0
+      AMQP_URL: amqp://myink:myink@myink-rabbitmq:5672/
       API_HOST: 0.0.0.0
       API_PORT: "8100"
       # 向量默认关：bge-m3 首次要下载 ~2.2GB 模型，纯关系链路降级可用（config.py 声明）。开法见 docs/DEPLOY.md
@@ -92,7 +92,7 @@ services:
       # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
-    command: ["sh", "-c", "aiink init && aiink-api"]
+    command: ["sh", "-c", "myink init && myink-api"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/openapi.json')"]
       interval: 5s
@@ -100,45 +100,45 @@ services:
       retries: 30
       start_period: 60s
     depends_on:
-      aiink-pg:
+      myink-pg:
         condition: service_healthy
-      aiink-redis:
+      myink-redis:
         condition: service_healthy
-      aiink-rabbitmq:
+      myink-rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
   # Worker：消费 RabbitMQ 主队列跑 LangGraph（api/worker 共用同一 Python 镜像，仅 command 不同）。
-  aiink-worker:
-    image: aiink-api:local
-    container_name: aiink-worker
+  myink-worker:
+    image: myink-api:local
+    container_name: myink-worker
     env_file: .env
     environment:
       APP_ENV: dev
-      DATABASE_URL: postgresql+psycopg://aiink_app:aiink@aiink-pg:5432/aiink
-      ADMIN_DATABASE_URL: postgresql+psycopg://aiink:aiink@aiink-pg:5432/aiink
-      REDIS_URL: redis://aiink-redis:6379/0
-      AMQP_URL: amqp://aiink:aiink@aiink-rabbitmq:5672/
+      DATABASE_URL: postgresql+psycopg://myink_app:myink@myink-pg:5432/myink
+      ADMIN_DATABASE_URL: postgresql+psycopg://myink:myink@myink-pg:5432/myink
+      REDIS_URL: redis://myink-redis:6379/0
+      AMQP_URL: amqp://myink:myink@myink-rabbitmq:5672/
       EMBED_ENABLED: "0"
       REQUEST_TOKEN_BUDGET: ${REQUEST_TOKEN_BUDGET:-64000}
       RECALL_TOKEN_BUDGET: ${RECALL_TOKEN_BUDGET:-12000}
       # 扫榜灵感只用于建书前题材参考，不注入 worker 生成节点
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
-    command: ["aiink-worker"]
+    command: ["myink-worker"]
     depends_on:
-      aiink-pg:
+      myink-pg:
         condition: service_healthy
-      aiink-redis:
+      myink-redis:
         condition: service_healthy
-      aiink-api:
+      myink-api:
         condition: service_started
-      aiink-rabbitmq:
+      myink-rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
   # Go 网关：唯一公网入口，静态托管 web/dist（前端）+ /api/v1 转发 + SSE（单端口 8080）。
-  aiink-gateway:
+  myink-gateway:
     build:
       context: .
       dockerfile: gateway/Dockerfile
@@ -149,13 +149,13 @@ services:
         DEBIAN_IMAGE: docker.m.daocloud.io/library/debian:bookworm-slim
         NPM_REGISTRY: https://registry.npmmirror.com
         GOPROXY: https://goproxy.cn,direct
-    image: aiink-gateway:local
-    container_name: aiink-gateway
+    image: myink-gateway:local
+    container_name: myink-gateway
     environment:
       GATEWAY_PORT: "8080"
-      REDIS_ADDR: aiink-redis:6379
-      AMQP_URL: amqp://aiink:aiink@aiink-rabbitmq:5672/
-      PYTHON_API_BASE: http://aiink-api:8100
+      REDIS_ADDR: myink-redis:6379
+      AMQP_URL: amqp://myink:myink@myink-rabbitmq:5672/
+      PYTHON_API_BASE: http://myink-api:8100
       WEB_DIST_DIR: /app/dist
       # 不挂 env_file：gateway 只消费 JWT_SECRET（其余 REDIS/PYTHON/WEB 已显式覆盖），
       # 避免把 DATABASE_URL 等业务密钥带进唯一公网入口容器（最小暴露）；
@@ -164,15 +164,15 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
-      aiink-redis:
+      myink-redis:
         condition: service_healthy
-      aiink-api:
+      myink-api:
         condition: service_started
-      aiink-rabbitmq:
+      myink-rabbitmq:
         condition: service_healthy
     restart: unless-stopped
 
 volumes:
   pgdata:
-    name: aiink_pgdata_v2   # 避开手工时代同名 volume（见 aiink-pg 注释）
-  rabbitmq-data:            # RabbitMQ 数据卷（拓扑参数变更时需清空重建，见 aiink-rabbitmq 注释）
+    name: myink_pgdata_v2   # 更名 Myink 时由 aiink_pgdata_v2 复制迁移（见 myink-pg 注释）
+  rabbitmq-data:            # RabbitMQ 数据卷（拓扑参数变更时需清空重建，见 myink-rabbitmq 注释）

@@ -8,11 +8,11 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from aiink.api.routes_tasks import PlanConfirmBody, confirm_task_plan
-from aiink.db import new_session
-from aiink.models import AgentRun, Task
-from aiink.providers.base import ModelProvider, ModelResponse
-from aiink.workflow.runner import generate_chapter, new_task, resume_chapter_plan
+from myink.api.routes_tasks import PlanConfirmBody, confirm_task_plan
+from myink.db import new_session
+from myink.models import AgentRun, Task
+from myink.providers.base import ModelProvider, ModelResponse
+from myink.workflow.runner import generate_chapter, new_task, resume_chapter_plan
 
 
 class ManualPlanProvider(ModelProvider):
@@ -82,7 +82,7 @@ def _create_manual_task(project_id: str) -> str:
 def test_manual_plan_waits_for_edit_and_resume_does_not_rerun_planner(
     temp_project, monkeypatch,
 ):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     provider = ManualPlanProvider()
     monkeypatch.setattr(providers_mod, "default_provider", provider)
@@ -118,7 +118,7 @@ def test_manual_plan_waits_for_edit_and_resume_does_not_rerun_planner(
 def test_manual_replan_pauses_again_and_keeps_both_plan_versions(
     temp_project, monkeypatch,
 ):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     provider = ManualPlanProvider(replan_once=True)
     monkeypatch.setattr(providers_mod, "default_provider", provider)
@@ -155,8 +155,8 @@ def test_manual_replan_pauses_again_and_keeps_both_plan_versions(
 def test_plan_confirm_api_validates_checkpoint_and_queues_exact_edited_version(
     temp_project, monkeypatch,
 ):
-    import aiink.providers as providers_mod
-    from aiink.worker import amqp
+    import myink.providers as providers_mod
+    from myink.worker import amqp
 
     provider = ManualPlanProvider()
     monkeypatch.setattr(providers_mod, "default_provider", provider)

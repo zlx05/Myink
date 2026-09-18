@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function ChapterEditor(props: Props) {
-  const draftKey = `aiink.draft:${getSession()?.userId ?? 'anonymous'}:${props.projectId}:${props.chapter.id}`
+  const draftKey = `myink.draft:${getSession()?.userId ?? 'anonymous'}:${props.projectId}:${props.chapter.id}`
   return <ChapterEditorBody key={draftKey} {...props} draftKey={draftKey} />
 }
 

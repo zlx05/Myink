@@ -5,12 +5,12 @@ import json
 import uuid
 from pathlib import Path
 from langgraph.checkpoint.memory import InMemorySaver
-from aiink.config import settings
-from aiink.db import new_session, tenant_session
-from aiink.models import Project, ProjectSettings, Character, Chapter, MemoryCandidate, AgentRun, User
-from aiink.workflow.chapter_graph import build_chapter_graph
-from aiink.workflow.review import resolve_review
-from aiink.api.routes_candidates import reject_candidate, RejectCandidateIn
+from myink.config import settings
+from myink.db import new_session, tenant_session
+from myink.models import Project, ProjectSettings, Character, Chapter, MemoryCandidate, AgentRun, User
+from myink.workflow.chapter_graph import build_chapter_graph
+from myink.workflow.review import resolve_review
+from myink.api.routes_candidates import reject_candidate, RejectCandidateIn
 
 p=argparse.ArgumentParser()
 p.add_argument('--live',action='store_true',required=True)

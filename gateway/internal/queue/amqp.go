@@ -10,13 +10,13 @@ import (
 
 	amqp091 "github.com/rabbitmq/amqp091-go"
 
-	"aiink/gateway/internal/config"
+	"myink/gateway/internal/config"
 )
 
 // RabbitMQ 拓扑名（三端声明必须完全一致，参数不一致会 PRECONDITION_FAILED）。
 const (
-	ExchangeTasks = "aiink.tasks"
-	ExchangeDlx   = "aiink.dlx"
+	ExchangeTasks = "myink.tasks"
+	ExchangeDlx   = "myink.dlx"
 	KeyTasks      = "tasks" // 主队列路由键
 	KeyDelay      = "delay" // 延迟队列路由键
 	KeyDlq        = "dlq"   // 死信路由键
@@ -46,10 +46,10 @@ type AMQP struct {
 
 // DialAMQP 连接 RabbitMQ 并幂等声明 5 项拓扑：
 //
-//	aiink.tasks (direct)
-//	  ├─ key "tasks" → queue:tasks  (x-max-priority=10, DLX→aiink.dlx/dlq)
-//	  └─ key "delay" → queue:delay  (DLX→aiink.tasks/tasks；无固定 TTL，逐条 expiration 退避)
-//	aiink.dlx (direct) → key "dlq" → queue:dlq
+//	myink.tasks (direct)
+//	  ├─ key "tasks" → queue:tasks  (x-max-priority=10, DLX→myink.dlx/dlq)
+//	  └─ key "delay" → queue:delay  (DLX→myink.tasks/tasks；无固定 TTL，逐条 expiration 退避)
+//	myink.dlx (direct) → key "dlq" → queue:dlq
 //
 // 失败返回 error（连接/声明/confirm 任一失败）。
 func DialAMQP(cfg config.Config) (*AMQP, error) {
@@ -106,7 +106,7 @@ func (a *AMQP) declare(prefix string) error {
 	if err := a.ch.ExchangeDeclare(exTasks, "direct", true, false, false, false, nil); err != nil {
 		return fmt.Errorf("exchange %s: %w", exTasks, err)
 	}
-	// 主队列：优先级 + 死信 → aiink.dlx/dlq
+	// 主队列：优先级 + 死信 → myink.dlx/dlq
 	if _, err := a.ch.QueueDeclare(mainQ, true, false, false, false, amqp091.Table{
 		"x-max-priority":            int32(10),
 		"x-dead-letter-exchange":    exDlx,

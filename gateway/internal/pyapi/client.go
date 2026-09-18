@@ -38,7 +38,7 @@ func (c *Client) ForwardLong(ctx context.Context, method, path string, query url
 	if err != nil {
 		return nil, err
 	}
-	// 透传对 RLS/租户上下文有意义的头（含 X-AiInk-User 占位身份）
+	// 透传对 RLS/租户上下文有意义的头（含 X-Myink-User 占位身份）
 	for k := range header {
 		req.Header.Set(k, header.Get(k))
 	}
@@ -53,7 +53,7 @@ func (c *Client) Forward(ctx context.Context, method, path string, query url.Val
 	if err != nil {
 		return nil, err
 	}
-	// 透传对 RLS/租户上下文有意义的头（含 X-AiInk-User 占位身份）
+	// 透传对 RLS/租户上下文有意义的头（含 X-Myink-User 占位身份）
 	for k := range header {
 		req.Header.Set(k, header.Get(k))
 	}

@@ -2,10 +2,10 @@
 // 分两块：配色/背景图是每套预设自己的（见 CustomPreset），字体与透明度是账号级的，
 // 官方三套一样吃（见 ThemeStyle）。
 
-export const THEME_STORAGE_KEY = 'aiink.theme'
-export const CUSTOM_THEME_STORAGE_KEY = 'aiink.theme.custom'
-export const PRESET_STORAGE_KEY = 'aiink.theme.presets'
-export const STYLE_STORAGE_KEY = 'aiink.theme.style'
+export const THEME_STORAGE_KEY = 'myink.theme'
+export const CUSTOM_THEME_STORAGE_KEY = 'myink.theme.custom'
+export const PRESET_STORAGE_KEY = 'myink.theme.presets'
+export const STYLE_STORAGE_KEY = 'myink.theme.style'
 export const PRESET_LIMIT = 8
 
 export const THEME_IDS = ['paper', 'night', 'contrast', 'custom'] as const

@@ -15,7 +15,7 @@ export function ProjectRail({ projects, onLogout }: Props) {
   return (
     <aside className={styles.rail}>
       <NavLink to="/projects" className={styles.brand}>
-        Ai Ink
+        Myink
       </NavLink>
       <nav className={styles.nav} aria-label="作品列表">
         {projects.map((p) => (

@@ -9,13 +9,13 @@
 - 入队 = amqp.publish 到 KEY_TASKS（-mp- 前缀隔离，不碰开发栈无前缀的真实队列）；
 - 延迟退避 = RabbitMQ TTL+DLX 自动把 queue:delay 的到期消息弹回主队列，无需
   _DispatcherSim 模拟网关 dispatcher；
-- QUEUE_PREFIX=-mp- 让本套件与开发栈 aiink-worker 容器完全隔离（容器消费无前缀
+- QUEUE_PREFIX=-mp- 让本套件与开发栈 myink-worker 容器完全隔离（容器消费无前缀
   queue:tasks，本套件消费 queue:tasks-mp-）——不再需要先停容器（Redis 消费组会抢消息）。
 
 配套 tests/_mp_worker.py（子进程入口：注入假 provider + 并发检测）。测试数据全用临时
 project（复制 demo 的 Project+ProjectSettings），demo 零污染；清理 = 删临时 project
-（FK 级联子表）+ agent_runs（无 FK 手动）+ Redis/RabbitMQ 残留。需活 Redis（aiink-redis
-:6380）+ 活 RabbitMQ（aiink-rabbitmq :5672）+ 活 PG（aiink init 建过 demo 项目）。
+（FK 级联子表）+ agent_runs（无 FK 手动）+ Redis/RabbitMQ 残留。需活 Redis（myink-redis
+:6380）+ 活 RabbitMQ（myink-rabbitmq :5672）+ 活 PG（myink init 建过 demo 项目）。
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from __future__ import annotations
 import json
 import os
 
-# QUEUE_PREFIX 隔离点在 conftest.py（在 aiink.config 冻结前设 -mp-）；此处重设仅作
+# QUEUE_PREFIX 隔离点在 conftest.py（在 myink.config 冻结前设 -mp-）；此处重设仅作
 # 防御性兜底（本模块被 pytest 加载时 settings 通常已被 conftest 初始化，实际不生效）。
 os.environ["QUEUE_PREFIX"] = "-mp-"
 
@@ -36,10 +36,10 @@ import uuid  # noqa: E402
 import pytest  # noqa: E402
 from sqlalchemy import delete as sa_delete, select as sa_select  # noqa: E402
 
-from aiink.db import new_session  # noqa: E402
-from aiink.models import AgentRun, Project, ProjectSettings, Task  # noqa: E402
-from aiink.worker import amqp  # noqa: E402
-from aiink.worker.redis_client import book_key, get_redis, lock_key, sse_key  # noqa: E402
+from myink.db import new_session  # noqa: E402
+from myink.models import AgentRun, Project, ProjectSettings, Task  # noqa: E402
+from myink.worker import amqp  # noqa: E402
+from myink.worker.redis_client import book_key, get_redis, lock_key, sse_key  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _MP_WORKER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_mp_worker.py")
@@ -129,7 +129,7 @@ def _demo_project_id() -> str:
 
     with new_session() as db:
         row = db.execute(text("SELECT id FROM projects WHERE title='九州问天'")).first()
-        assert row is not None, "请先运行 aiink init 建立 demo 项目"
+        assert row is not None, "请先运行 myink init 建立 demo 项目"
         return str(row.id)
 
 

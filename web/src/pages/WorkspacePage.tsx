@@ -580,7 +580,7 @@ export default function WorkspacePage() {
     setExporting(true)
     try {
       const project = projects.find((p) => p.id === projectId)
-      const lines: string[] = [`# ${project?.title ?? 'Ai Ink 作品'}`, '']
+      const lines: string[] = [`# ${project?.title ?? 'Myink 作品'}`, '']
       for (const c of chapters) {
         const detail = await api.getChapter(projectId, c.id)
         const title = detail.title?.trim() || ''
@@ -591,7 +591,7 @@ export default function WorkspacePage() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `${project?.title ?? 'ai-ink'}.md`
+      a.download = `${project?.title ?? 'myink'}.md`
       a.click()
       URL.revokeObjectURL(url)
     } catch {

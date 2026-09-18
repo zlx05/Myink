@@ -13,12 +13,12 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.exc import IntegrityError
 
-from aiink.api.routes_chapters import (ContentUpdate, list_chapter_versions,
+from myink.api.routes_chapters import (ContentUpdate, list_chapter_versions,
                                        restore_chapter_version,
                                        update_chapter_content)
-from aiink.db import tenant_session
-from aiink.memory.repository import save_chapter, save_review_draft
-from aiink.models import Chapter, ChapterVersion
+from myink.db import tenant_session
+from myink.memory.repository import save_chapter, save_review_draft
+from myink.models import Chapter, ChapterVersion
 
 
 def _seed(pid: str, seq: int = 1) -> str:
@@ -132,7 +132,7 @@ def test_delete_chapter_cascades_versions(temp_project):
     """级联删章 → 版本历史随章节 FK 级联清除（不回留下孤儿历史）。"""
     cid = _seed(temp_project)
     update_chapter_content(temp_project, cid, ContentUpdate(content="v2", expected_version=1))
-    from aiink.api.routes_chapters import delete_chapter
+    from myink.api.routes_chapters import delete_chapter
     delete_chapter(temp_project, cid)
     with tenant_session(temp_project) as db:
         assert db.query(ChapterVersion).filter(

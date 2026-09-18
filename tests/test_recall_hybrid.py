@@ -22,12 +22,12 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from aiink.config import settings
-from aiink.db import tenant_session
-from aiink.models import Chapter, Event, Fact
-from aiink.memory.recall import build_context, _rrf_fuse
-from aiink.memory.vector_store import PgvectorStore
-from aiink.workflow import nodes
+from myink.config import settings
+from myink.db import tenant_session
+from myink.models import Chapter, Event, Fact
+from myink.memory.recall import build_context, _rrf_fuse
+from myink.memory.vector_store import PgvectorStore
+from myink.workflow import nodes
 
 QUERY_SUMMARY = "林砚在黑市查探玉佩真相"
 
@@ -58,8 +58,8 @@ class RaiseEmbedder:
 @pytest.fixture(autouse=True)
 def fake_embedder(monkeypatch):
     fake = DeterministicFakeEmbedder()
-    monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.workflow.nodes.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: fake)
     return fake
 
 
@@ -69,7 +69,7 @@ def embed_flag(monkeypatch):
     其取值随环境漂移（compose/ci-local=0，裸跑 pytest 取代码默认 1），凡断言腿状态的
     用例都必须自己设定，否则会随环境红绿。"""
     def _set(enabled: bool):
-        monkeypatch.setattr("aiink.memory.recall.settings",
+        monkeypatch.setattr("myink.memory.recall.settings",
                             dataclasses.replace(settings, embed_enabled=enabled))
     return _set
 
@@ -236,7 +236,7 @@ def test_hybrid_recall_degrade_embedder_fails(temp_project, embed_flag, monkeypa
     embed_flag(True)
     with tenant_session(temp_project) as db:
         # 只 monkeypatch recall 侧 get_embedder：embedder 加载失败 → 向量腿挂，关键词腿仍工作
-        monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: RaiseEmbedder())
+        monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: RaiseEmbedder())
         ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21,
                             participants=["林砚"])
         new = [e for e in ctx.mid_term_events if e.get("recalled_by")]
@@ -254,7 +254,7 @@ def test_hybrid_recall_reports_vector_disabled(temp_project, embed_flag, monkeyp
     日志走 info 不刷 warning，且关键词腿照常独立工作。"""
     _seed_hybrid_data(temp_project)
     embed_flag(False)
-    monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: RaiseEmbedder())
+    monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: RaiseEmbedder())
     with tenant_session(temp_project) as db:
         ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21,
                             participants=["林砚"])
@@ -268,7 +268,7 @@ def test_hybrid_recall_degrade_both_legs_empty(temp_project, embed_flag, monkeyp
     _seed_hybrid_data(temp_project)
     embed_flag(False)
     with tenant_session(temp_project) as db:
-        monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: RaiseEmbedder())
+        monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: RaiseEmbedder())
         # participants=None → 关键词腿术语空；向量腿抛错 → 双腿全空 = 纯关系兜底
         ctx = build_context(db, project_id=uuid.UUID(temp_project), chapter_seq=21)
         assert not [e for e in ctx.mid_term_events if e.get("recalled_by")]

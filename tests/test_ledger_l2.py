@@ -8,7 +8,7 @@ mock LLM（validator_l2，不依赖真实 DeepSeek key）。验证：
   route_after_audit l2_major → revise / 预算耗尽 needs_review；node_persist l2_major → 待确认池；
 - LLM/解析失败非阻断。
 
-桩设计（test_bridge_audit 模板）：LLM 单点注入 = monkeypatch `aiink.validation.ledger_l2.make_chain`。
+桩设计（test_bridge_audit 模板）：LLM 单点注入 = monkeypatch `myink.validation.ledger_l2.make_chain`。
 """
 
 from __future__ import annotations
@@ -18,14 +18,14 @@ import uuid
 
 import pytest
 
-from aiink.db import tenant_session
-from aiink.models import Chapter, CharacterState, MemoryCandidate, Relation
-from aiink.providers.base import ModelResponse
-from aiink.schemas import Finding
-from aiink.validation import ledger_l2 as l2
-from aiink.validation.l1 import _key
-from aiink.workflow import nodes
-from aiink.workflow.chapter_graph import route_after_audit
+from myink.db import tenant_session
+from myink.models import Chapter, CharacterState, MemoryCandidate, Relation
+from myink.providers.base import ModelResponse
+from myink.schemas import Finding
+from myink.validation import ledger_l2 as l2
+from myink.validation.l1 import _key
+from myink.workflow import nodes
+from myink.workflow.chapter_graph import route_after_audit
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 A, B, C, D = (uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
@@ -72,7 +72,7 @@ def _rel_cand(rtype: str, old_v, new_v, src: uuid.UUID | None = None,
                         "relation_type": rtype, "old_value": old_v, "new_value": new_v}}
 
 
-# ---- LLM 桩（单点：aiink.validation.ledger_l2.make_chain）----
+# ---- LLM 桩（单点：myink.validation.ledger_l2.make_chain）----
 
 
 class _Chain:
@@ -106,7 +106,7 @@ class _LedgerStub:
 
 @pytest.fixture
 def install_stub(monkeypatch):
-    """注入单点：patch aiink.validation.ledger_l2.make_chain（正文-台账语义比对唯一桩点）。"""
+    """注入单点：patch myink.validation.ledger_l2.make_chain（正文-台账语义比对唯一桩点）。"""
 
     def _install(stub):
         monkeypatch.setattr(l2, "make_chain", lambda role, **_kwargs: _Chain(stub))
@@ -358,7 +358,7 @@ def test_merge_unresolved_keeps_l1_l2_and_overrides_same_key():
 
 def test_route_after_audit_l2_major_routing():
     """route_after_audit：l2_major → revise；预算耗尽 → needs_review；无 → 原 pass 路径。"""
-    from aiink.config import settings as s
+    from myink.config import settings as s
     base = {"report": {"summary": {"critical": 0}}, "revision_count": 0, "replan_count": 0,
             "audit_verdict": {"verdict": "pass"}}
     # 无 l2_major → pass 路径放行

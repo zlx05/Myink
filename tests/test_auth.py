@@ -1,11 +1,11 @@
 """JWT 身份断言测试（§14.1 ③ 归属校验双保险 / §14.5 越权测试矩阵）。
 
 - 签发：username → JWT（HS256，sub=user_id）；未知用户 404。
-- 归属断言（require_owner）：网关透传 X-AiInk-User（已验证身份）→ project.user_id 匹配才放行。
+- 归属断言（require_owner）：网关透传 X-Myink-User（已验证身份）→ project.user_id 匹配才放行。
   跨用户读 → 403（伪造身份）；缺失身份 → 403（fail closed）；身份非法 → 403；项目不存在 → 404。
 - list_projects：按身份过滤（只返回自己的书）；无身份 → 空列表（fail closed）。
 
-信任链：网关验 JWT（Go 侧测试覆盖）→ 透传 X-AiInk-User → 本文件测 Python 侧断言。
+信任链：网关验 JWT（Go 侧测试覆盖）→ 透传 X-Myink-User → 本文件测 Python 侧断言。
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ import uuid
 import jwt
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.config import settings
-from aiink.db import new_session
-from aiink.models import Project, User
+from myink.api.main import app
+from myink.config import settings
+from myink.db import new_session
+from myink.models import Project, User
 
 client = TestClient(app)
 
@@ -26,13 +26,13 @@ client = TestClient(app)
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-AiInk-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 # ---- 签发 ----
@@ -45,7 +45,7 @@ def test_issue_token_demo():
     assert data["user_id"] == str(_demo_user_id())
     claims = jwt.decode(data["token"], settings.jwt_secret, algorithms=["HS256"])
     assert claims["sub"] == str(_demo_user_id())
-    assert claims["iss"] == "aiink"
+    assert claims["iss"] == "myink"
 
 
 def test_issue_token_unknown_user_404():
@@ -55,7 +55,7 @@ def test_issue_token_unknown_user_404():
 
 def test_demo_login_disabled_in_production(monkeypatch):
     from types import SimpleNamespace
-    import aiink.api.auth as auth
+    import myink.api.auth as auth
     monkeypatch.setattr(auth, "settings", SimpleNamespace(is_prod=lambda: True))
     resp = client.post("/internal/v1/auth/token", json={"username": "demo"})
     assert resp.status_code == 403

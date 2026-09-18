@@ -93,7 +93,7 @@ func loadContract(t *testing.T) map[string]any {
 	p := filepath.Join(filepath.Dir(file), "..", "..", "..", "spec", "api-openapi.json")
 	raw, err := os.ReadFile(p)
 	if err != nil {
-		t.Fatalf("读契约文件失败: %v（先 aiink contract export 并提交 spec/api-openapi.json）", err)
+		t.Fatalf("读契约文件失败: %v（先 myink contract export 并提交 spec/api-openapi.json）", err)
 	}
 	var doc map[string]any
 	if err := json.Unmarshal(raw, &doc); err != nil {

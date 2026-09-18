@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.models import Chapter, Foreshadow, MemoryCandidate
-from aiink.workflow import nodes, prompts
+from myink.db import tenant_session
+from myink.models import Chapter, Foreshadow, MemoryCandidate
+from myink.workflow import nodes, prompts
 
 
 def _plant(temp_project: str, *, status: str = "planted", chapter: int = 1):

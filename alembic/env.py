@@ -1,7 +1,7 @@
 """Alembic 迁移环境（§17.2：迁移是部署步骤，镜像构建后、发布前执行）。
 
-- 目标元数据：src/aiink/models 全部表（autogenerate 依赖）；
-- URL：从 aiink.config 读取（复用 .env，密钥不进代码库）。
+- 目标元数据：src/myink/models 全部表（autogenerate 依赖）；
+- URL：从 myink.config 读取（复用 .env，密钥不进代码库）。
 """
 
 from __future__ import annotations
@@ -9,8 +9,8 @@ from __future__ import annotations
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from aiink.config import settings
-from aiink.models import Base  # noqa: F401  导入全部模型注册到 metadata
+from myink.config import settings
+from myink.models import Base  # noqa: F401  导入全部模型注册到 metadata
 
 config = context.config
 # 迁移走超级用户（owner）连接：ALTER/CREATE TABLE 需要 owner/DDL 权限（§17.2 迁移是部署步骤）

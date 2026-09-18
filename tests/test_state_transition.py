@@ -2,10 +2,10 @@
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.models import Character, CharacterState
-from aiink.workflow import nodes
-from aiink.workflow.nodes import _materialize_cumulative_state
+from myink.db import tenant_session
+from myink.models import Character, CharacterState
+from myink.workflow import nodes
+from myink.workflow.nodes import _materialize_cumulative_state
 
 
 def test_incremental_item_state_is_merged_with_ledger_value() -> None:

@@ -3119,7 +3119,7 @@
     }
   },
   "info": {
-    "title": "Ai Ink 内部 API",
+    "title": "Myink 内部 API",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -3192,7 +3192,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3203,7 +3203,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3239,7 +3239,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3250,7 +3250,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3298,7 +3298,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3309,7 +3309,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3357,7 +3357,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3368,7 +3368,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3416,7 +3416,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3427,7 +3427,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3502,7 +3502,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3513,7 +3513,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3551,7 +3551,7 @@
         "parameters": [
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3562,7 +3562,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3620,7 +3620,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3631,7 +3631,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3677,7 +3677,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3688,7 +3688,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3756,7 +3756,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3767,7 +3767,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3828,7 +3828,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3839,7 +3839,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3896,7 +3896,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3907,7 +3907,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -3972,7 +3972,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -3983,7 +3983,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4041,7 +4041,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4052,7 +4052,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4106,7 +4106,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4117,7 +4117,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4171,7 +4171,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4182,7 +4182,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4249,7 +4249,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4260,7 +4260,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4317,7 +4317,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4328,7 +4328,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4394,7 +4394,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4405,7 +4405,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4453,7 +4453,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4464,7 +4464,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4525,7 +4525,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4536,7 +4536,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4588,7 +4588,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4599,7 +4599,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4683,7 +4683,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4694,7 +4694,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4746,7 +4746,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4757,7 +4757,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4809,7 +4809,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4820,7 +4820,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4878,7 +4878,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4889,7 +4889,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -4947,7 +4947,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -4958,7 +4958,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5008,7 +5008,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5019,7 +5019,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5076,7 +5076,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5087,7 +5087,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5135,7 +5135,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5146,7 +5146,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5210,7 +5210,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5221,7 +5221,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5282,7 +5282,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5293,7 +5293,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5350,7 +5350,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5361,7 +5361,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5409,7 +5409,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5420,7 +5420,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5466,7 +5466,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5477,7 +5477,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5535,7 +5535,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5546,7 +5546,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5603,7 +5603,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5614,7 +5614,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5659,7 +5659,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5670,7 +5670,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5727,7 +5727,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5738,7 +5738,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5795,7 +5795,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5806,7 +5806,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5864,7 +5864,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5875,7 +5875,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -5933,7 +5933,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -5944,7 +5944,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6002,7 +6002,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6013,7 +6013,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6071,7 +6071,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6082,7 +6082,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6156,7 +6156,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6167,7 +6167,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6219,7 +6219,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6230,7 +6230,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6279,7 +6279,7 @@
           },
           {
             "in": "header",
-            "name": "X-AiInk-User",
+            "name": "X-Myink-User",
             "required": false,
             "schema": {
               "anyOf": [
@@ -6290,7 +6290,7 @@
                   "type": "null"
                 }
               ],
-              "title": "X-Aiink-User"
+              "title": "X-Myink-User"
             }
           }
         ],

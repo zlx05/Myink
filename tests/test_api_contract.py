@@ -2,11 +2,11 @@
 
 单一事实源 = FastAPI `app.openapi()`：全部公开消费端点（前端 api.ts 方法逐一覆盖，
 含任务历史列表 tasks、写作经验 lessons×3、correct-memory、级联删章）挂 response_model
-（src/aiink/api/schemas.py）后，openapi 响应 schema有实质内容；`aiink contract export`
+（src/myink/api/schemas.py）后，openapi 响应 schema有实质内容；`myink contract export`
 导出到 spec/api-openapi.json 提交入库，本套件与 CI 的 `git diff --exit-code` 构成双闸
 ——后端改 response_model 未重新导出即红。
 
-独立运行：只 import app 调 app.openapi()，不触 DB、不需要 aiink init。
+独立运行：只 import app 调 app.openapi()，不触 DB、不需要 myink init。
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from aiink.api.main import app
+from myink.api.main import app
 
 # 公开消费端点（前端 api.ts 方法逐一覆盖：生成走网关入队不在此列）。path 用 FastAPI
 # 模板形式（{project_id}）。
@@ -138,13 +138,13 @@ def test_no_uncovered_business_route() -> None:
 def test_openapi_matches_committed_spec() -> None:
     """diff 闸的测试侧：提交的 spec/api-openapi.json 必须与 app 当前 openapi 一致。
 
-    改了 response_model 但没 `aiink contract export` 重新导出 → 本测试红
+    改了 response_model 但没 `myink contract export` 重新导出 → 本测试红
     （CI 另有 git diff --exit-code 双重拦截）。
     """
     if not SPEC_PATH.exists():
-        pytest.fail(f"契约文件缺失: {SPEC_PATH}（先运行 aiink contract export）")
+        pytest.fail(f"契约文件缺失: {SPEC_PATH}（先运行 myink contract export）")
     committed = json.loads(SPEC_PATH.read_text(encoding="utf-8"))
     assert committed == _spec(), (
         "spec/api-openapi.json 与当前 app.openapi() 不一致——改了响应契约后需重新 "
-        "`aiink contract export` 并提交"
+        "`myink contract export` 并提交"
     )

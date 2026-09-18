@@ -12,11 +12,11 @@ import uuid
 
 from sqlalchemy import select
 
-from aiink.db import tenant_session
-from aiink.models import ProjectSettings
-from aiink.schemas import MutationCandidate
-from aiink.validation.l1 import L1Validator
-from aiink.validation.service import ValidationService
+from myink.db import tenant_session
+from myink.models import ProjectSettings
+from myink.schemas import MutationCandidate
+from myink.validation.l1 import L1Validator
+from myink.validation.service import ValidationService
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 

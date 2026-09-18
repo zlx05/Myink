@@ -12,11 +12,11 @@ from __future__ import annotations
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.models import Chapter
-from aiink.providers.base import ModelResponse
-from aiink.workflow import nodes
-from aiink.workflow.runner import finalize_chapter_review
+from myink.db import tenant_session
+from myink.models import Chapter
+from myink.providers.base import ModelResponse
+from myink.workflow import nodes
+from myink.workflow.runner import finalize_chapter_review
 
 
 def _get_chapter(temp_project: str):
@@ -107,7 +107,7 @@ def test_finalize_awaiting_review_keeps_event_summary(temp_project, fake_embedde
 
 def test_runner_finalize_appends_node_summarize(temp_project, monkeypatch):
     """finalize 不走图 → runner 在落库后单独补调 node_summarize（含完整 checkpoint 状态）。"""
-    from aiink.workflow import runner as runner_mod
+    from myink.workflow import runner as runner_mod
 
     class _FakeSnap:
         values = {

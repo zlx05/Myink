@@ -12,16 +12,16 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from aiink.api.routes_global_audit import get_global_audit, list_global_audits
-from aiink.api import routes_settings
-from aiink.api.routes_settings import (ModelConnectionBody, SettingsBody, get_project_settings,
+from myink.api.routes_global_audit import get_global_audit, list_global_audits
+from myink.api import routes_settings
+from myink.api.routes_settings import (ModelConnectionBody, SettingsBody, get_project_settings,
                                        put_project_settings)
-from aiink.db import new_session, tenant_session
-from aiink.memory.repository import get_settings
-from aiink.models import GlobalAuditReport, Project, ProjectSettings, User
-from aiink.providers import make_chain
-from aiink.providers.connections import CONNECTIONS_KEY
-from aiink.providers.credentials import decrypt_api_key
+from myink.db import new_session, tenant_session
+from myink.memory.repository import get_settings
+from myink.models import GlobalAuditReport, Project, ProjectSettings, User
+from myink.providers import make_chain
+from myink.providers.connections import CONNECTIONS_KEY
+from myink.providers.credentials import decrypt_api_key
 
 FINDING = {"conflict_type": "persona_drift", "severity": "hint", "scope": "local",
            "source": "audit", "evidence": [{"chapter": 1, "quote": "……"}],

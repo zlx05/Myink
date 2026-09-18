@@ -40,7 +40,7 @@ export default function LoginPage() {
   return (
     <div className={styles.wrap}>
       <form className={`panel ${styles.card}`} onSubmit={onSubmit}>
-        <h1>Ai Ink 作品工作台</h1>
+        <h1>Myink 作品工作台</h1>
         <p className={styles.sub}>长篇网文多 Agent 创作助手</p>
         <p className={styles.sub}>本地演示模式：使用 demo 进入，无密码验证。</p>
         <label className={styles.field}>

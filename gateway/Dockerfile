@@ -1,4 +1,4 @@
-# Ai Ink Go 网关镜像（阶段 5 多阶段）：前端 dist + 网关二进制 + 精简运行层。
+# Myink Go 网关镜像（阶段 5 多阶段）：前端 dist + 网关二进制 + 精简运行层。
 # 最终镜像包含 web/dist（网关静态托管，单端口 8080 同源出页面 + API + SSE）。
 #
 # 基础镜像源可用 build arg 覆盖（国内 docker.io 直连可能超时；compose 当前环境传

@@ -1,5 +1,5 @@
 // 三层闸门 + RabbitMQ 发布测试（活 Redis :6380 + RabbitMQ :5672；键/拓扑用前缀隔离）。
-// 对 compose 起的 aiink-rabbitmq（非 loopback guest）需 AMQP_URL=amqp://aiink:aiink@localhost:5672/
+// 对 compose 起的 myink-rabbitmq（非 loopback guest）需 AMQP_URL=amqp://myink:myink@localhost:5672/
 // 否则 dial 403 会静默 skip（skip-if-unreachable 也吃鉴权失败）。
 package queue
 
@@ -12,8 +12,8 @@ import (
 
 	amqp091 "github.com/rabbitmq/amqp091-go"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/redis"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/redis"
 )
 
 const testQueuePrefix = "-gtest-"
@@ -24,7 +24,7 @@ func newTestRedis(t *testing.T) *redis.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := r.Ping(ctx); err != nil {
-		t.Skipf("aiink-redis 不可达: %v", err)
+		t.Skipf("myink-redis 不可达: %v", err)
 	}
 	return r
 }
@@ -44,7 +44,7 @@ func newTestRMQ(t *testing.T, cfg config.Config) *AMQP {
 	t.Helper()
 	conn, err := amqp091.Dial(cfg.AmqpURL)
 	if err != nil {
-		t.Skipf("aiink-rabbitmq 不可达 %s: %v", cfg.AmqpURL, err)
+		t.Skipf("myink-rabbitmq 不可达 %s: %v", cfg.AmqpURL, err)
 	}
 	_ = conn.Close()
 	rmq, err := DialAMQP(cfg)

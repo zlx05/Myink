@@ -10,12 +10,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/time/rate"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/limiter"
-	"aiink/gateway/internal/pyapi"
-	"aiink/gateway/internal/queue"
-	"aiink/gateway/internal/redis"
-	"aiink/gateway/internal/trace"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/limiter"
+	"myink/gateway/internal/pyapi"
+	"myink/gateway/internal/queue"
+	"myink/gateway/internal/redis"
+	"myink/gateway/internal/trace"
 )
 
 // NewRouter 装配全部路由与中间件。

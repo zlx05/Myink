@@ -1,5 +1,5 @@
 -- 三层闸门原子脚本（§13，消灭 TOCTOU）。入队已迁 RabbitMQ（gates.lua 不再 XADD）：
--- Go 端跑本脚本通过后发布 aiink.tasks，确定失败时跑 compensate.lua 回滚副作用。
+-- Go 端跑本脚本通过后发布 myink.tasks，确定失败时跑 compensate.lua 回滚副作用。
 -- KEYS[1] = rate:quota:{uid}:{date}     (String, 每用户日配额已用)
 -- KEYS[2] = rate:inflight:{uid}:{pid}   (Set, 每书进行中任务；异书并行、同书串行 §13)
 -- KEYS[3] = rate:cost:{date}            (String, 全局日成本已用, worker 终态累计)

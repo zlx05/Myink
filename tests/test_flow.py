@@ -15,12 +15,12 @@ import uuid
 import pytest
 from sqlalchemy import text
 
-from aiink.db import new_session, tenant_session
-from aiink.models import AgentRun, Chapter, Fact, Task
-from aiink.providers.base import ModelProvider, ModelResponse
-from aiink.workflow.batch_graph import build_batch_graph
-from aiink.workflow.chapter_graph import build_chapter_graph
-from aiink.workflow.runner import generate_batch, generate_chapter, get_graphs, new_task, resume_thread
+from myink.db import new_session, tenant_session
+from myink.models import AgentRun, Chapter, Fact, Task
+from myink.providers.base import ModelProvider, ModelResponse
+from myink.workflow.batch_graph import build_batch_graph
+from myink.workflow.chapter_graph import build_chapter_graph
+from myink.workflow.runner import generate_batch, generate_chapter, get_graphs, new_task, resume_thread
 
 
 class StubProvider(ModelProvider):
@@ -102,13 +102,13 @@ def project_id():
     """取 demo project（seed 已在 init 建立）。"""
     with new_session() as db:
         row = db.execute(text("SELECT id FROM projects WHERE title='九州问天'")).first()
-        assert row is not None, "请先运行 `aiink init`"
+        assert row is not None, "请先运行 `myink init`"
         return str(row.id)
 
 
 @pytest.fixture
 def stub_provider(monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     def _install(realm_from, realm_to):
         stub = StubProvider(realm_from, realm_to)
@@ -129,9 +129,9 @@ class FakeEmbedder:
 def fake_embedder(monkeypatch):
     """全测试 mock 掉 bge-m3：persist 向量化/recall/桥段近邻都走假实现，不加载真实模型。"""
     fake = FakeEmbedder()
-    monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.validation.l1.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.workflow.nodes.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.validation.l1.get_embedder", lambda: fake)
     return fake
 
 
@@ -195,7 +195,7 @@ def test_rewrite_flow_invalidates_then_persists(project_id, stub_provider):
 
 def test_recall_context_has_foreshadows(project_id, stub_provider, fake_embedder):
     """伏笔链路闭环：recall 上下文应带开放伏笔 + 活跃剧情线（§7.9 plan_chapter 输入）。"""
-    from aiink.memory.recall import build_context
+    from myink.memory.recall import build_context
 
     stub_provider("金丹", "金丹")
     # 先跑一章种下伏笔（stub extract 产 foreshadow 候选）
@@ -254,9 +254,9 @@ def test_confirm_resume_no_duplicate(project_id, stub_provider):
     草稿直接落库正文 + 推进进度。已确认候选 confirm 时已落库，收尾不重复写、池不堆
     重复（评审 A2 幂等仍验：池内任意状态同位候选都挡重写）。
     """
-    import aiink.workflow.nodes as nodes
-    from aiink.models import MemoryCandidate
-    from aiink.worker.processor import _dispatch
+    import myink.workflow.nodes as nodes
+    from myink.models import MemoryCandidate
+    from myink.worker.processor import _dispatch
 
     stub_provider("金丹", "元婴")  # 越界 → L1 critical → 待确认池
     _reset_runs(project_id)
@@ -345,8 +345,8 @@ def test_confirm_resume_no_duplicate(project_id, stub_provider):
 
 def test_persist_skips_pool_handled_candidates(project_id):
     """auto 路径跳过已进确认池的候选（A2 第二道防线：skip_pool_handled 直测）。"""
-    import aiink.workflow.nodes as nodes
-    from aiink.models import MemoryCandidate
+    import myink.workflow.nodes as nodes
+    from myink.models import MemoryCandidate
 
     payload = {
         "summary": "林砚于黑市查探玉佩真相", "participants": ["林砚"],
@@ -381,7 +381,7 @@ def test_batch_flow(project_id, stub_provider, monkeypatch):
     """批次：batch_plan（2 章）→ 单章 ×2 → batch_end 汇总。"""
     stub_provider("金丹", "金丹")
 
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.workflow.batch_graph as bg_mod
 
     # batch_plan 节点走 batch_graph.make_chain → 换批次 stub（返回 N 章蓝图）
     # 单章子图仍走 nodes.make_chain → default_provider（stub_provider 已换成单章 stub）
@@ -422,10 +422,10 @@ def test_batch_review_resume_finalizes_chapter(project_id, monkeypatch):
     checkpoint 草稿直接收尾落库正文（不重跑图），再续下一章；下一章仍 critical 则另行
     暂停等人工。用 6/7 章段（3/4/5 被他批次测试复用），结束自清理防污染。
     """
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
-    import aiink.workflow.nodes as nodes
-    from aiink.models import MemoryCandidate
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
+    import myink.workflow.nodes as nodes
+    from myink.models import MemoryCandidate
 
     _clean_chapter_range(project_id, 6, 7)
     stub = BatchStubProvider("金丹", "元婴")  # 每章越界 → L1 critical
@@ -478,8 +478,8 @@ def test_batch_review_resume_finalizes_chapter(project_id, monkeypatch):
 
 def test_batch_plan_short_explicit_fail(project_id, monkeypatch):
     """批次规划少返回 → 显式失败（评审 A3），而不是写了部分章却静默收尾。"""
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
 
     stub = ShortBatchStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -510,8 +510,8 @@ def test_batch_failure_and_resume(project_id, monkeypatch):
     任务 failed；resume_thread 同 thread 续跑 → 失败章重试成功 → 批次 done，
     ch3（已完成）write 不重跑、ch4（失败）write 恰好重试一次。
     """
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
 
     stub = BatchFailStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)          # 单章节点链
@@ -558,8 +558,8 @@ def test_batch_pause_halt_and_resume(project_id, monkeypatch):
     图在 ch5 边界读到 paused → BatchHaltError 中断（非 END，checkpoint 停在本章）。
     断言：write 只到 ch4（2 次）、任务保持 paused；resume 后只补 ch5（write=3）→ done。
     """
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
 
     tid = new_task(project_id=project_id, task_type="batch_generate",
                    payload={"start": 3, "size": 3})
@@ -602,8 +602,8 @@ def test_batch_cancel_halt(project_id, monkeypatch):
 
     同暂停机制（BatchHaltError），区别在终态语义：取消后任务置 cancelled、无续跑。
     """
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
 
     tid = new_task(project_id=project_id, task_type="batch_generate",
                    payload={"start": 3, "size": 3})
@@ -642,7 +642,7 @@ def test_audit_rewrite_loop(project_id, monkeypatch):
 
     验证 §6.5（触发源从校验报告改为审核中枢 verdict）+ 混合路由 rewrite 分支。
     """
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = AuditRewriteStub("金丹", "金丹", rewrite_times=1)
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -666,7 +666,7 @@ def test_audit_replan_chapter(project_id, monkeypatch):
 
     验证混合路由 replan 分支 + replan_count 预算。
     """
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = AuditReplanStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -690,9 +690,9 @@ def test_batch_shared_context(project_id, monkeypatch):
 
     用 repo.get_hard_facts 调用计数验证——2 章批次只查 1 次硬约束，第 2 章复用缓存。
     """
-    import aiink.providers as providers_mod
-    import aiink.memory.recall as recall_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.memory.recall as recall_mod
+    import myink.workflow.batch_graph as bg_mod
 
     stub = BatchStubProvider("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -728,8 +728,8 @@ def test_audit_replan_batch(project_id, monkeypatch):
 
     验证 §6.11 replan 自适应（batch 粒度）+ 混合路由的 replan_batch 批次边。
     """
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
 
     stub = AuditReplanBatchStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -757,7 +757,7 @@ def test_audit_rewrite_loop_content_driven(project_id, monkeypatch):
     比 test_audit_rewrite_loop 严格：后者 stub 按次数返回（第 1 次 rewrite 第 2 次 pass），
     无法证明「真的修了、真的复验通过」；本测试路由由草稿是否含修订标记决定。
     """
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = ContentAuditRewriteStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -786,7 +786,7 @@ def test_audit_replan_chapter_content_driven(project_id, monkeypatch):
     比 test_audit_replan_chapter 严格：路由由草稿是否含重规划新稿标记决定，
     验证「判 replan → 真实重规划重写 → 复验通过」。
     """
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = ContentAuditReplanStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -1185,7 +1185,7 @@ def test_audit_tool_loop(project_id, monkeypatch):
 
     验证 _run_tool_loop：单工具轮 + 条件最终轮、每轮 agent_runs 记录、tool_trace 回写。
     """
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = ToolAuditStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -1212,7 +1212,7 @@ def test_audit_tool_loop(project_id, monkeypatch):
 
 def test_write_tool_loop(project_id, monkeypatch):
     """write 持只读查证工具（§10）：工具轮调 inspect_facts → 结果回传 → 出稿落库。"""
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = ToolWriteStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -1254,7 +1254,7 @@ class WriteNoiseStub(StubProvider):
 
 def test_write_rejects_tool_noise(project_id, monkeypatch):
     """write 输出文本式工具调用（§10 跑偏）：显式失败，不把噪声当正文落库。"""
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = WriteNoiseStub("金丹", "金丹")
     monkeypatch.setattr(providers_mod, "default_provider", stub)
@@ -1279,7 +1279,7 @@ def test_tool_budget_forced_exit(temp_project, monkeypatch):
     验证 max_tool_calls=3 封顶：tool_trace 恰好 3 条、audit 4 轮 LLM（3 工具 + 1 最终）
     仍正常 pass 收敛。
     """
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     # 此处验证工具调用次数；共享 demo 的累积记忆会先撞到 token 预算，掩盖本测试目标。
     project_id = temp_project
@@ -1307,7 +1307,7 @@ def test_tools_execute_readonly(project_id):
     """
     import json as _json
 
-    from aiink.workflow.tools import execute_tool
+    from myink.workflow.tools import execute_tool
 
     pid = uuid.UUID(project_id)
     with tenant_session(project_id) as db:
@@ -1326,7 +1326,7 @@ def test_deepseek_tool_call_parsing(monkeypatch):
     """DeepSeekProvider 工具轮（§10）：tools 进请求、关思考、无 response_format；
     tool_calls 解析为 {id, name, arguments dict}（arguments JSON 字符串容错为 {}）。
     """
-    from aiink.providers.deepseek import DeepSeekProvider
+    from myink.providers.deepseek import DeepSeekProvider
 
     class FakeFn:
         def __init__(self, name, arguments):
@@ -1415,7 +1415,7 @@ def test_deepseek_tool_call_parsing(monkeypatch):
 
 def test_parse_json_tolerates_raw_control_chars():
     """§6.12 输出容错：DeepSeek 偶发 JSON 字符串里放原始换行 → 转义后仍能解析。"""
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     # 原始换行字节（非 \n 两字符）是非法 JSON，应容错还原
     raw = '{"content": "第一段\n\n第二段"}'
@@ -1438,7 +1438,7 @@ def test_parse_json_preserves_structure_whitespace_after_escape():
     转成 \\u000a 字面量 → 结构空白不接受转义序列 → Expecting property name char 1。
     2026-08-10 演示逼出：audit reasoning_content 兜底内容 = 前导思考文本 + 多行 JSON。
     """
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     # 前导杂质 + 多行 JSON（含结构换行）+ 字符串值内 Unicode 行分隔符
     noisy = '我的判断：\n{\n  "verdict": "pass",\n  "reasons": ["第一点 第二点"]\n}\n补充'
@@ -1453,7 +1453,7 @@ def test_parse_json_preserves_structure_whitespace_after_escape():
 
 def test_parse_json_tolerates_trailing_junk_with_brace():
     """§6.12 输出容错：完整 JSON 后附含 } 的废话 → 只取首个完整对象。"""
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     # 尾部杂质含 }（audit 实测形态），rfind("}") 截取会失败，raw_decode 只取首个对象
     noisy = '{"verdict":"pass","confidence":0.9}我认为可以。}结束'
@@ -1466,7 +1466,7 @@ def test_parse_json_tolerates_trailing_junk_with_brace():
 
 def test_parse_json_repairs_missing_commas_at_value_boundaries():
     """DeepSeek 偶发漏掉数组项/对象字段/对象项逗号；确定性修语法且保留原值。"""
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     raw = '{"goals":["推进主线" "处理伤势"], "meta":{"a":1 "b":2}, "scenes":[{} {}]}'
     data = _parse_json(raw)
@@ -1480,7 +1480,7 @@ def test_parse_json_repairs_missing_commas_at_value_boundaries():
 
 def test_parse_json_repairs_stray_quotes():
     """§6.12 输出容错：正文裸 ASCII 双引号（DeepSeek 偶发未转义）→ 修复后解析成功。"""
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     # write 实测形态：content 正文里夹了未转义的 "（提前闭合 → Expecting ',' delimiter）
     raw = '{"content": "他说"好，这就来"就走", "title": "x"}'
@@ -1495,7 +1495,7 @@ def test_parse_json_repairs_stray_quotes():
 
 def test_parse_json_repair_noop_on_valid():
     """§6.12 输出容错：合法 JSON 走不到裸引号兜底，修复不改变解析结果。"""
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     raw = '{"content": "正常文本，无引号", "title": "a"}'
     assert _parse_json(raw)["content"] == "正常文本，无引号"
@@ -1510,7 +1510,7 @@ def test_parse_json_repairs_stray_quote_then_control_char():
     控制字符停在「结构位置」漏转义 → Invalid control character。兜底顺序必须先修裸引号
     再转义控制字符（_escape_control_chars(_repair_stray_quotes(body))）。
     """
-    from aiink.workflow.nodes import _parse_json
+    from myink.workflow.nodes import _parse_json
 
     raw = '{"content": "他说"好\n", "t": 1}'
     data = _parse_json(raw)
@@ -1520,7 +1520,7 @@ def test_parse_json_repairs_stray_quote_then_control_char():
 
 def test_split_marked_no_marker_returns_default():
     """§6.12 标记锚点：模型漏写标记时整段归 default（兜底不丢章）。"""
-    from aiink.workflow.nodes import _split_marked
+    from myink.workflow.nodes import _split_marked
 
     parts = _split_marked("林砚在黑市隐秘查探，玉佩气息若隐若现。")
     assert parts == {"default": "林砚在黑市隐秘查探，玉佩气息若隐若现。"}
@@ -1528,7 +1528,7 @@ def test_split_marked_no_marker_returns_default():
 
 def test_split_marked_single_marker_takes_block():
     """§6.12 标记锚点：=== CONTENT === 后文本归该键，标记前杂质归 default。"""
-    from aiink.workflow.nodes import _split_marked
+    from myink.workflow.nodes import _split_marked
 
     parts = _split_marked("我先核实一下。\n=== CONTENT ===\n第一段\n\n第二段")
     assert parts.get("CONTENT") == "第一段\n\n第二段"
@@ -1537,7 +1537,7 @@ def test_split_marked_single_marker_takes_block():
 
 def test_split_marked_multiple_markers_sections():
     """§6.12 标记锚点：多标记各归各键（revise 的 CONTENT + RESPONSES）。"""
-    from aiink.workflow.nodes import _split_marked
+    from myink.workflow.nodes import _split_marked
 
     parts = _split_marked(
         "=== CONTENT ===\n修订后全文\n=== RESPONSES ===\n[{\"conflict_key\":\"a1\"}]"
@@ -1549,7 +1549,7 @@ def test_split_marked_multiple_markers_sections():
 
 def test_split_marked_empty_block_after_marker():
     """§6.12 标记锚点：标记后空正文 → 该键为空字符串。"""
-    from aiink.workflow.nodes import _split_marked
+    from myink.workflow.nodes import _split_marked
 
     parts = _split_marked("=== CONTENT ===\n")
     assert parts.get("CONTENT") == ""
@@ -1557,7 +1557,7 @@ def test_split_marked_empty_block_after_marker():
 
 def test_split_marked_lowercase_and_chinese_markers():
     """§6.12 标记锚点：小写/中文标记名不污染正文（归一到大写键 + 命名块）。"""
-    from aiink.workflow.nodes import _split_marked
+    from myink.workflow.nodes import _split_marked
 
     parts = _split_marked("=== content ===\n第一段")
     assert parts.get("CONTENT") == "第一段", "小写标记应归一到大写键"
@@ -1568,7 +1568,7 @@ def test_split_marked_lowercase_and_chinese_markers():
 
 def test_content_block_prefers_content_then_named():
     """§6.12 标记锚点：_content_block 优先 CONTENT，错写标记名时取首个非空命名块。"""
-    from aiink.workflow.nodes import _content_block
+    from myink.workflow.nodes import _content_block
 
     assert _content_block({"CONTENT": "正文", "RESPONSES": "[]"}, "raw") == "正文"
     # 模型错写中文标记（无 CONTENT/default）→ 取首个非空命名块，标记行不落库
@@ -1578,7 +1578,7 @@ def test_content_block_prefers_content_then_named():
 
 
 def test_check_draft_strips_thinking_wrappers():
-    from aiink.workflow.nodes import _check_draft
+    from myink.workflow.nodes import _check_draft
 
     assert _check_draft("<think>先列大纲</think>\n=== CONTENT ===\n林砚推门而出。") == "林砚推门而出。"
     assert _check_draft("<think>这段不该落库</think>\n夜色沉沉，林砚立在廊下。") == "夜色沉沉，林砚立在廊下。"
@@ -1586,7 +1586,7 @@ def test_check_draft_strips_thinking_wrappers():
 
 def test_looks_like_tool_noise_detects_text_tool_calls():
     """§10 write/revise 跑偏：模型把工具调用写成文本而非 function calling → 判噪声。"""
-    from aiink.workflow.nodes import _looks_like_tool_noise
+    from myink.workflow.nodes import _looks_like_tool_noise
 
     noise = ('<ai_output>\n<function_results>\n<invoke name="inspect_facts">\n'
              '</function_results>\n</ai_output>')
@@ -1598,8 +1598,8 @@ def test_looks_like_tool_noise_detects_text_tool_calls():
 
 def test_coerce_str_lists_normalizes_llm_object_arrays():
     """§6.12 输出容错：list[str] 字段被 LLM 写成对象数组（{'hook': ...}）→ 归一为纯字符串列表。"""
-    from aiink.schemas.contract import ChapterPlan
-    from aiink.workflow.nodes import _coerce_str_lists
+    from myink.schemas.contract import ChapterPlan
+    from myink.workflow.nodes import _coerce_str_lists
 
     data = _coerce_str_lists({
         "goals": [{"goal": "推动主线"}],
@@ -1629,7 +1629,7 @@ def test_storage_indexes_exist_and_idempotent():
     """
     from sqlalchemy import text
 
-    from aiink.db import ensure_storage_indexes, get_admin_engine
+    from myink.db import ensure_storage_indexes, get_admin_engine
 
     _EXPECTED = {
         "ix_character_states_project_char_seq",

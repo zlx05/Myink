@@ -1,7 +1,7 @@
 [project]
-name = "aiink"
+name = "myink"
 version = "0.1.0"
-description = "Ai Ink - 面向长篇网文的多 Agent 智能创作助手（推理层，阶段 1）"
+description = "Myink - 面向长篇网文的多 Agent 智能创作助手（推理层，阶段 1）"
 requires-python = ">=3.11"
 dependencies = [
     "sqlalchemy>=2.0",
@@ -27,7 +27,7 @@ dependencies = [
     # 阶段 3：JWT 身份断言（§14.1 ③，签发端点；网关验签走 golang-jwt，密钥共享 .env）
     "pyjwt>=2.8",
     # 阶段 3：MCP Client（§10，接入外部榜单工具）：锁 1.x（v2 有破坏性变更：snake_case/httpx2），
-    # 所有 mcp import 隔离在 aiink/integrations/mcp.py 单文件，升 2.x 只改那一处 + 版本号。
+    # 所有 mcp import 隔离在 myink/integrations/mcp.py 单文件，升 2.x 只改那一处 + 版本号。
     "mcp>=1.29,<2",
 ]
 
@@ -44,9 +44,9 @@ ml = [
 ]
 
 [project.scripts]
-aiink = "aiink.cli:app"
-aiink-worker = "aiink.worker.entry:run"
-aiink-api = "aiink.api.main:main"
+myink = "myink.cli:app"
+myink-worker = "myink.worker.entry:run"
+myink-api = "myink.api.main:main"
 
 [build-system]
 requires = ["setuptools>=68"]

@@ -7,11 +7,11 @@ import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
-from aiink.api.main import app
-from aiink.db import ensure_genre_pack, new_session, tenant_session
+from myink.api.main import app
+from myink.db import ensure_genre_pack, new_session, tenant_session
 
 ensure_genre_pack()
-from aiink.genre_catalog import (
+from myink.genre_catalog import (
     PACKS,
     UNSELECTED_NAME,
     VOLUME_SPAN_FAST,
@@ -24,8 +24,8 @@ from aiink.genre_catalog import (
     suggest_volume_count,
     volume_span_for,
 )
-from aiink.memory.repository import get_settings
-from aiink.models import User
+from myink.memory.repository import get_settings
+from myink.models import User
 
 client = TestClient(app)
 
@@ -47,7 +47,7 @@ def _delete_user(uid: uuid.UUID) -> None:
 
 
 def _h(uid: uuid.UUID) -> dict:
-    return {"X-AiInk-User": str(uid)}
+    return {"X-Myink-User": str(uid)}
 
 
 def test_catalog_has_37_and_stable_ids():

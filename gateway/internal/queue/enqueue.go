@@ -11,8 +11,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/redis"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/redis"
 )
 
 //go:embed gates.lua

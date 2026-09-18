@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ai Ink 作品工作台</title>
+    <title>Myink 作品工作台</title>
     <script>
       (function () {
         try {
           var root = document.documentElement
-          var theme = localStorage.getItem('aiink.theme')
+          var theme = localStorage.getItem('myink.theme')
           if (theme === 'night' || theme === 'contrast') {
             root.setAttribute('data-theme', theme)
             root.style.colorScheme = theme === 'night' ? 'dark' : 'light'
@@ -18,12 +18,12 @@
           if (theme !== 'custom') return
           root.setAttribute('data-theme', 'custom')
           var tokens = {}
-          var store = JSON.parse(localStorage.getItem('aiink.theme.presets') || 'null')
+          var store = JSON.parse(localStorage.getItem('myink.theme.presets') || 'null')
           if (store && Array.isArray(store.items)) {
             var item = store.items.find(function (preset) { return preset.id === store.activeId }) || store.items[0]
             if (item && item.tokens) tokens = item.tokens
           } else {
-            tokens = JSON.parse(localStorage.getItem('aiink.theme.custom') || '{}')
+            tokens = JSON.parse(localStorage.getItem('myink.theme.custom') || '{}')
           }
           var map = { canvas: '--canvas', ink: '--ink', editor: '--editor', editorInk: '--editor-ink', accent: '--accent' }
           Object.keys(map).forEach(function (key) {

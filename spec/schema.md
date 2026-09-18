@@ -1,4 +1,4 @@
-# Ai Ink 数据契约（JSON Schema）— Phase 0
+# Myink 数据契约（JSON Schema）— Phase 0
 
 > **用途**：定义核心对象的 JSON Schema，作为 Pydantic 强校验（plan.md §3 已确认决策）的蓝本。保证 **extract 抽取输出 / 校验器读取 / 数据库存储** 三方字段一致，杜绝阶段 1 编码期返工。
 >
@@ -346,7 +346,7 @@
 
 ### 分层与注入（单一真源 = `context_budget.MEMORY_LAYERS` / `NODE_INJECTIONS`）
 
-「哪块记忆属于哪一层、超预算先丢谁、进哪个节点」由 `src/aiink/context_budget.py` 的
+「哪块记忆属于哪一层、超预算先丢谁、进哪个节点」由 `src/myink/context_budget.py` 的
 `MEMORY_LAYERS` 与 `NODE_INJECTIONS` 两个常量声明，`fit_prompt` 的裁剪从表派生。下面这张
 表是它的镜像——**改代码请先改常量**，`tests/test_memory_layers.py` 会断言二者与实际注入
 面一致（漂移即红）。

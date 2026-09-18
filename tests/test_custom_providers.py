@@ -4,8 +4,8 @@ import json
 
 import httpx
 
-from aiink.providers.anthropic import AnthropicProvider, _convert_messages, _messages_url
-from aiink.providers.openai_compatible import (
+from myink.providers.anthropic import AnthropicProvider, _convert_messages, _messages_url
+from myink.providers.openai_compatible import (
     OpenAICompatibleProvider, is_deepseek_host, is_minimax_host,
 )
 

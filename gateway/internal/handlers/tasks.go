@@ -12,11 +12,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/pyapi"
-	"aiink/gateway/internal/queue"
-	"aiink/gateway/internal/redis"
-	streaming "aiink/gateway/internal/sse"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/pyapi"
+	"myink/gateway/internal/queue"
+	"myink/gateway/internal/redis"
+	streaming "myink/gateway/internal/sse"
 )
 
 type TaskHandler struct {

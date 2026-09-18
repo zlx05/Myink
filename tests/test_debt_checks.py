@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.models import Foreshadow, PlotThread
-from aiink.schemas import MutationCandidate
-from aiink.validation.l1 import L1Validator
+from myink.db import tenant_session
+from myink.models import Foreshadow, PlotThread
+from myink.schemas import MutationCandidate
+from myink.validation.l1 import L1Validator
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 

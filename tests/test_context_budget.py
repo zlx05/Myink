@@ -5,8 +5,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from aiink.context_budget import ContextBudgetExceeded, estimate_tokens, fit_prompt
-from aiink.workflow import prompts, nodes
+from myink.context_budget import ContextBudgetExceeded, estimate_tokens, fit_prompt
+from myink.workflow import prompts, nodes
 
 
 def test_optional_memory_trimmed_without_mutating_shared_context():
@@ -69,7 +69,7 @@ def test_small_prompt_is_unchanged():
 
 @pytest.mark.parametrize('node', ['write', 'audit'])
 def test_prompt_reserves_actual_tool_schema_size(monkeypatch, node):
-    from aiink.workflow.tools import READ_TOOLS
+    from myink.workflow.tools import READ_TOOLS
     monkeypatch.setattr(prompts, 'settings', SimpleNamespace(request_token_budget=12000))
     context = {'entity_snapshots': [{'name': f'人物{i}', 'state': {'location': '地点' * 200}}
                                      for i in range(40)],

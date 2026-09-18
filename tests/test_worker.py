@@ -1,7 +1,7 @@
 """阶段 2 worker 单测（§6.12 幂等 / 物化 / 重试分类 / 取消跳过 / 租约锁）。
 
 复用 test_flow 的活库 + 假 provider 模式；worker 直接消费队列消息跑 LangGraph。
-验证（无真实 DeepSeek 依赖，redis 需起 aiink-redis :6380）：
+验证（无真实 DeepSeek 依赖，redis 需起 myink-redis :6380）：
 - process 物化：DB 无该 task_id → new_task 建行（status=running）→ 跑图 → 终态落库；
 - 幂等去重：task 已终态（done/failed）→ 返回 "skip" 不重跑；
 - 取消跳过：task=cancelled → 返回 "skip"，cancelled 不被终态回写覆盖；
@@ -19,10 +19,10 @@ import uuid
 
 import pytest
 
-from aiink.db import new_session, tenant_session
-from aiink.models import Task
-from aiink.worker.processor import process
-from aiink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
+from myink.db import new_session, tenant_session
+from myink.models import Task
+from myink.worker.processor import process
+from myink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 
 
 def _body(task_id, project_id, task_type="chapter_generate", payload=None, user_id="test-user"):
@@ -43,7 +43,7 @@ def test_database_disconnects_are_retryable():
     from psycopg import InterfaceError, OperationalError
     from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 
-    from aiink.worker.processor import _is_retryable
+    from myink.worker.processor import _is_retryable
 
     assert _is_retryable(OperationalError("the connection is closed"))
     assert _is_retryable(InterfaceError("connection lost"))
@@ -90,8 +90,8 @@ def test_process_materialize_and_done(temp_project, stub_provider):
 
 def test_worker_publishes_artifact_while_dispatch_is_still_running(temp_project, monkeypatch):
     """Worker 应在任务完成事件之前发布正文片段，而非结束后一次性补发。"""
-    import aiink.worker.processor as processor_mod
-    from aiink.workflow.streaming import ArtifactEmitter
+    import myink.worker.processor as processor_mod
+    from myink.workflow.streaming import ArtifactEmitter
 
     task_id = str(uuid.uuid4())
     body = _body(task_id, temp_project, payload={"seq": 1, "mode": "auto"})
@@ -132,8 +132,8 @@ def test_worker_publishes_artifact_while_dispatch_is_still_running(temp_project,
 
 def test_manual_plan_worker_waits_without_releasing_gate_then_resumes(temp_project, monkeypatch):
     """手动模式暂停时释放 worker/书锁但保留并发闸门；确认后同 task 断点完成并释放。"""
-    import aiink.providers as providers_mod
-    from aiink.models import AgentRun, Chapter
+    import myink.providers as providers_mod
+    from myink.models import AgentRun, Chapter
     from test_manual_plan import ManualPlanProvider
 
     provider = ManualPlanProvider()
@@ -191,8 +191,8 @@ def test_manual_plan_worker_waits_without_releasing_gate_then_resumes(temp_proje
 
 def test_stale_plan_resume_cannot_approve_a_new_replan_version(temp_project, monkeypatch):
     """第 1 版确认消息重放时，不得越过第 2 版 Plan 的人工确认点。"""
-    import aiink.providers as providers_mod
-    from aiink.models import AgentRun
+    import myink.providers as providers_mod
+    from myink.models import AgentRun
     from test_manual_plan import ManualPlanProvider
 
     provider = ManualPlanProvider(replan_once=True)
@@ -247,9 +247,9 @@ def test_stale_plan_resume_cannot_approve_a_new_replan_version(temp_project, mon
 
 def test_cancel_awaiting_plan_releases_gate_and_marks_empty_chapter(temp_project, monkeypatch):
     """用户不想采用 Plan 时可退出等待态，避免该书被永久锁住。"""
-    import aiink.providers as providers_mod
-    from aiink.api.routes_tasks import cancel_task
-    from aiink.models import Chapter
+    import myink.providers as providers_mod
+    from myink.api.routes_tasks import cancel_task
+    from myink.models import Chapter
     from test_manual_plan import ManualPlanProvider
 
     monkeypatch.setattr(providers_mod, "default_provider", ManualPlanProvider())
@@ -299,7 +299,7 @@ def test_process_idempotent_skip_done(temp_project, stub_provider):
 def test_process_cancel_skips_and_wins(project_id, stub_provider):
     """取消优先：task=cancelled → skip；runner 终态回写不覆盖 cancelled（§阶段2 守卫）。"""
     stub_provider("金丹", "金丹")
-    from aiink.workflow.runner import new_task
+    from myink.workflow.runner import new_task
 
     task_id = new_task(
         project_id=project_id, task_type="chapter_generate",
@@ -318,9 +318,9 @@ def test_process_batch_pause_publishes_paused(temp_project, monkeypatch):
     SSE 事件为 paused（非 done），流保持开启等 resume 续跑。用独立临时书（start=1）
     满足写序守卫且不污染 demo 数据。
     """
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
-    from aiink.workflow.runner import new_task
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
+    from myink.workflow.runner import new_task
 
     from test_flow import BatchHaltStub, _Chain
 
@@ -358,8 +358,8 @@ def test_process_resume_settles_terminal_status(temp_project, monkeypatch):
     重启后也不可重投，任务永久卡死。mock _dispatch 返回 done / needs_review 结果，
     断言任务行终态被补写为 done / awaiting_review（awaiting_review 可再续跑）。
     """
-    import aiink.worker.processor as proc_mod
-    from aiink.workflow.runner import new_task
+    import myink.worker.processor as proc_mod
+    from myink.workflow.runner import new_task
 
     r = get_redis()
 
@@ -401,7 +401,7 @@ def test_process_retry_classification(project_id, stub_provider, monkeypatch):
     （PG/Redis 连接断），这正是 _resolve_chapter_seq 的位置。
     """
     stub_provider("金丹", "金丹")
-    import aiink.worker.processor as proc_mod
+    import myink.worker.processor as proc_mod
 
     def boom(*a, **k):
         raise ConnectionError("PG 连接瞬断")
@@ -439,7 +439,7 @@ def test_process_batch_write_order_guard(temp_project, stub_provider):
     临时书 max_seq=0 → 合法首章 = 1；start=0（写第 0 章）与 start=2（跳过第 1 章）都应被拦。
     """
     stub_provider("金丹", "金丹")
-    from aiink.models import AgentRun
+    from myink.models import AgentRun
 
     project_id = temp_project
     r = get_redis()
@@ -529,7 +529,7 @@ def test_process_lock_reclaims_legacy_format(temp_project, stub_provider):
 def test_lock_release_does_not_delete_other_owner(project_id, stub_provider):
     """锁释放 CAS：持锁期间锁被他人接管（换 token）→ 释放不误删新锁。"""
     stub_provider("金丹", "金丹")
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     task_id = str(uuid.uuid4())
     r = get_redis()
@@ -549,10 +549,10 @@ def test_lock_heartbeat_renews_ttl(monkeypatch):
     """锁心跳续租：持锁期间后台线程刷新心跳 + TTL，锁不因长任务而过期。"""
     import types
 
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     # 把锁模块的心跳间隔压到 0.2s，避免等 15s（settings 是 frozen dataclass，patch 模块引用即可）
-    monkeypatch.setattr("aiink.worker.lock.settings", types.SimpleNamespace(
+    monkeypatch.setattr("myink.worker.lock.settings", types.SimpleNamespace(
         worker_lock_heartbeat=0.2, worker_inflight_ttl=60))
 
     task_id = str(uuid.uuid4())
@@ -577,7 +577,7 @@ def test_lock_heartbeat_renews_ttl(monkeypatch):
 def test_lock_release_reclaims_stale_value_same_worker(project_id):
     """E2E 暴露的释放竞态：renew 已应用到服务端但客户端 self._value 过期，
     CAS_DEL 值比对失配 → 锁滞留。release 应靠 worker_id 归属兜底删除，不滞到 TTL。"""
-    from aiink.worker.lock import TaskLock, _refresh_heartbeat
+    from myink.worker.lock import TaskLock, _refresh_heartbeat
 
     r = get_redis()
     key = book_key(project_id)
@@ -597,7 +597,7 @@ def test_lock_release_reclaims_stale_value_same_worker(project_id):
 
 def test_lock_release_keeps_taken_over_lock(project_id):
     """释放不误删：锁被他人接管（worker_id 不同）→ release 不删除他人新锁。"""
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     r = get_redis()
     key = book_key(project_id)
@@ -618,7 +618,7 @@ def test_book_lock_hetero_book_parallel(project_id):
     书锁（lock:book:{pid}）是 worker 侧权威：网关并发闸门拦「同书第 2 个入队」，
     resume 直发绕闸门时靠书锁保证同书串行，异书在任何时刻都能并行。
     """
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     r = get_redis()
     lock_a = TaskLock.acquire(r, book_key(project_id), "worker-a")
@@ -636,7 +636,7 @@ def test_book_lock_hetero_book_parallel(project_id):
 
 def test_book_lock_release_cas(project_id):
     """书锁释放 CAS：持锁期间锁被他人接管（换 token）→ release 不误删新锁。"""
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     r = get_redis()
     key = book_key(project_id)
@@ -677,7 +677,7 @@ def test_process_book_lock_released_on_done(temp_project, stub_provider):
     assert process(body) == "terminal"
     assert r.exists(book_key(project_id)) == 0, "任务终态应释放书锁"
     # 同书下一任务可立即获得书锁执行
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     next_lock = TaskLock.acquire(r, book_key(project_id), "worker-next")
     assert next_lock is not None, "书锁释放后同书下一任务可执行"
@@ -691,9 +691,9 @@ def test_process_stable_worker_id_for_locks(temp_project, stub_provider, monkeyp
     release 的 worker_id 归属兜底（§难点22 释放竞态）才可靠——随机 uuid 会让归属失去辨识意义。"""
     stub_provider("金丹", "金丹")
     project_id = temp_project
-    import aiink.worker.processor as proc_mod
+    import myink.worker.processor as proc_mod
 
-    from aiink.worker.lock import TaskLock
+    from myink.worker.lock import TaskLock
 
     captured = []
     orig = TaskLock.acquire
@@ -723,8 +723,8 @@ def test_process_stable_worker_id_for_locks(temp_project, stub_provider, monkeyp
 
 def _seed_chapter(project_id: str, seq: int, *, status: str = "confirmed") -> None:
     """给临时书直接物化一章（绕图，测 guard 纯逻辑；temp_project 收尾 FK 级联删）。"""
-    from aiink.db import tenant_session
-    from aiink.models import Chapter
+    from myink.db import tenant_session
+    from myink.models import Chapter
 
     with tenant_session(project_id) as db:
         db.add(Chapter(project_id=uuid.UUID(project_id), chapter_seq=seq,
@@ -734,7 +734,7 @@ def _seed_chapter(project_id: str, seq: int, *, status: str = "confirmed") -> No
 
 def test_guard_rewrite_allows_confirmed(temp_project):
     """rewrite=True 放行已 confirmed 章（唯一合法重写对象）。"""
-    from aiink.worker.processor import _guard_write_order
+    from myink.worker.processor import _guard_write_order
 
     _seed_chapter(temp_project, 1)
     _guard_write_order(temp_project, 1, rewrite=True)  # 不放行会抛 WriteOrderError
@@ -742,7 +742,7 @@ def test_guard_rewrite_allows_confirmed(temp_project):
 
 def test_guard_rewrite_rejects_missing_or_beyond(temp_project):
     """rewrite=True 拒绝不存在的章 / 超过已写范围（空书重写第 3 章、只写到 1 重写 5）。"""
-    from aiink.worker.processor import WriteOrderError, _guard_write_order
+    from myink.worker.processor import WriteOrderError, _guard_write_order
 
     with pytest.raises(WriteOrderError):
         _guard_write_order(temp_project, 3, rewrite=True)
@@ -753,7 +753,7 @@ def test_guard_rewrite_rejects_missing_or_beyond(temp_project):
 
 def test_guard_rewrite_rejects_awaiting_review(temp_project):
     """rewrite=True 拒绝 awaiting_review 章（§6.11 确认分流：走 resume/reject 处理）。"""
-    from aiink.worker.processor import WriteOrderError, _guard_write_order
+    from myink.worker.processor import WriteOrderError, _guard_write_order
 
     _seed_chapter(temp_project, 1, status="awaiting_review")
     with pytest.raises(WriteOrderError):
@@ -762,7 +762,7 @@ def test_guard_rewrite_rejects_awaiting_review(temp_project):
 
 def test_guard_no_rewrite_stays_strict(temp_project):
     """无 rewrite 时旧严格校验不变：重写已写章仍拒绝、只放行 max_seq+1（默认参数零回归）。"""
-    from aiink.worker.processor import WriteOrderError, _guard_write_order
+    from myink.worker.processor import WriteOrderError, _guard_write_order
 
     _seed_chapter(temp_project, 1)
     with pytest.raises(WriteOrderError):
@@ -772,9 +772,9 @@ def test_guard_no_rewrite_stays_strict(temp_project):
 
 def test_guard_resumes_empty_placeholder_without_skipping_chapter(temp_project):
     """生成中/失败的空章节仍是当前目标：允许重试本章，禁止直接跳到下一章。"""
-    from aiink.db import tenant_session
-    from aiink.models import Chapter
-    from aiink.worker.processor import WriteOrderError, _guard_write_order
+    from myink.db import tenant_session
+    from myink.models import Chapter
+    from myink.worker.processor import WriteOrderError, _guard_write_order
 
     with tenant_session(temp_project) as db:
         db.add(Chapter(
@@ -792,9 +792,9 @@ def test_guard_resumes_empty_placeholder_without_skipping_chapter(temp_project):
 
 def test_dispatch_materializes_target_chapter_before_writing(temp_project, monkeypatch):
     """正文工作流启动前即建立目标章节页，流转不再寄生在上一章。"""
-    import aiink.worker.processor as processor
-    from aiink.db import tenant_session
-    from aiink.memory import repository as repo
+    import myink.worker.processor as processor
+    from myink.db import tenant_session
+    from myink.memory import repository as repo
 
     observed = {}
 
@@ -820,9 +820,9 @@ def test_dispatch_materializes_target_chapter_before_writing(temp_project, monke
 
 def test_batch_runner_materializes_each_chapter_before_its_subgraph(temp_project):
     """批次推进到后续章时也先建立该章页面，再运行该章子图。"""
-    from aiink.db import tenant_session
-    from aiink.memory import repository as repo
-    from aiink.workflow.batch_graph import make_chapter_runner
+    from myink.db import tenant_session
+    from myink.memory import repository as repo
+    from myink.workflow.batch_graph import make_chapter_runner
 
     class FakeChapterGraph:
         def invoke(self, state, config):

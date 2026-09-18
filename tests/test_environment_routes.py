@@ -8,21 +8,21 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy import delete as sa_delete
 
-from aiink.api import routes_environment
-from aiink.api.routes_environment import (
+from myink.api import routes_environment
+from myink.api.routes_environment import (
     EnvironmentBody,
     ModelConnectionBody,
     get_environment,
     put_environment,
 )
-from aiink.api.routes_settings import SettingsBody
-from aiink.api.routes_settings import put_project_settings
-from aiink.db import ensure_user_environment, new_session
-from aiink.environment import save_raw
-from aiink.models import User
-from aiink.providers import make_chain
-from aiink.providers.connections import CONNECTIONS_KEY
-from aiink.providers.credentials import decrypt_api_key
+from myink.api.routes_settings import SettingsBody
+from myink.api.routes_settings import put_project_settings
+from myink.db import ensure_user_environment, new_session
+from myink.environment import save_raw
+from myink.models import User
+from myink.providers import make_chain
+from myink.providers.connections import CONNECTIONS_KEY
+from myink.providers.credentials import decrypt_api_key
 
 
 ensure_user_environment()
@@ -90,8 +90,8 @@ def test_environment_connection_prices_roundtrip_and_chain(temp_user, temp_proje
     assert out["model_connections"][0]["input_price"] == 3.5
     assert out["model_connections"][0]["output_price"] == 8.0
 
-    from aiink.db import new_session as ns
-    from aiink.models import Project
+    from myink.db import new_session as ns
+    from myink.models import Project
     with ns() as db:
         proj = db.get(Project, uuid.UUID(temp_project))
         proj.user_id = uuid.UUID(temp_user)
@@ -156,8 +156,8 @@ def test_environment_saves_audit_summarize_and_thinking(temp_user):
 
 
 def test_make_chain_prefers_user_environment_over_project(temp_project, temp_user):
-    from aiink.db import new_session as ns
-    from aiink.models import Project
+    from myink.db import new_session as ns
+    from myink.models import Project
 
     with ns() as db:
         proj = db.get(Project, uuid.UUID(temp_project))
@@ -230,7 +230,7 @@ def test_rankings_probe_reports_tools(temp_user, monkeypatch):
 def test_environment_requires_auth():
     from fastapi.testclient import TestClient
 
-    from aiink.api.main import app
+    from myink.api.main import app
 
     assert TestClient(app).get("/internal/v1/environment").status_code == 403
 
@@ -238,7 +238,7 @@ def test_environment_requires_auth():
 def test_environment_requires_auth():
     from fastapi.testclient import TestClient
 
-    from aiink.api.main import app
+    from myink.api.main import app
 
     client = TestClient(app)
     assert client.get("/internal/v1/environment").status_code == 403

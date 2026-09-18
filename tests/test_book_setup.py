@@ -11,7 +11,7 @@
   realm_cap 缺失默认「无」；
 - 浏览：GET world / GET characters 读回持久化设定；空 settings 行 → 空默认不 500；越权矩阵。
 
-模式 A（monkeypatch aiink.providers.default_provider）：make_chain 调用时读全局单例，
+模式 A（monkeypatch myink.providers.default_provider）：make_chain 调用时读全局单例，
 与 test_style_profile / test_flow stub_provider 同款。
 """
 
@@ -24,12 +24,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
-from aiink.api.main import app
-from aiink.config import settings
-from aiink.db import new_session, tenant_session
-from aiink.memory.repository import get_settings
-from aiink.models import AgentRun, Character, Project, ProjectSettings, User
-from aiink.providers.base import ModelProvider, ModelResponse
+from myink.api.main import app
+from myink.config import settings
+from myink.db import new_session, tenant_session
+from myink.memory.repository import get_settings
+from myink.models import AgentRun, Character, Project, ProjectSettings, User
+from myink.providers.base import ModelProvider, ModelResponse
 
 client = TestClient(app)
 
@@ -55,13 +55,13 @@ _SETUP_BODY = {
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-AiInk-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 class _BookStub(ModelProvider):
@@ -87,7 +87,7 @@ class _BookStub(ModelProvider):
 
 @pytest.fixture
 def book_stub(monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     def _install(payload: dict | None = None, *, raw: str | None = None, raise_error: bool = False) -> _BookStub:
         stub = _BookStub(payload, raw=raw, raise_error=raise_error)
@@ -382,6 +382,6 @@ def test_world_characters_ownership(temp_project):
 
 def test_setup_prompt_ai_title_contract():
     """AI 起名契约：SYSTEM_BOOK_SETUP 的 JSON schema 含 title 字段（书名留空由 Planner 建议）。"""
-    from aiink.workflow import prompts
+    from myink.workflow import prompts
     assert '"title"' in prompts.SYSTEM_BOOK_SETUP, "schema 须含书名建议字段"
     assert "已定书名返回空串" in prompts.SYSTEM_BOOK_SETUP, "已定书名时 title 返回空串（不覆盖作者决定）"

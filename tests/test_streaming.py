@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiink.providers.deepseek import DeepSeekProvider
-from aiink.workflow.streaming import ArtifactEmitter, bind_artifact_sink
+from myink.providers.deepseek import DeepSeekProvider
+from myink.workflow.streaming import ArtifactEmitter, bind_artifact_sink
 
 
 def test_artifact_emitter_chunks_with_replay_offsets():

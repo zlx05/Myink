@@ -10,24 +10,24 @@ import os
 
 # 扫榜默认关（§10）：图节点集成测试不触外网。DaoSearch 不可达会让 mcp initialize 挂起/
 # 被内部 cancel scope 取消（CancelledError 不降级直接炸节点）；且 test_multiprocess 的子
-# 进程是全新 import（monkeypatch 传播不到）。必须在 aiink.config 首次导入前设（settings
+# 进程是全新 import（monkeypatch 传播不到）。必须在 myink.config 首次导入前设（settings
 # 是 frozen dataclass 模块级单例）。rankings 特性测试自带 FakeSettings/monkeypatch，不受影响。
 os.environ["RANKINGS_ENABLED"] = "0"
 # RabbitMQ 测试隔离（阶段 6）：QUEUE_PREFIX=-mp- 让本套件发布/消费全走 queue:tasks-mp-，
 # 不碰开发栈无前缀真实队列（避免测试消息污染生产队列/被真实 worker 抢走）。
-# 必须在 aiink.config 首次导入前设（settings 是 frozen 单例）——单在 test_multiprocess.py
-# 模块级设已太晚：conftest 的 aiink.db 导入会先触发 settings 冻结。
+# 必须在 myink.config 首次导入前设（settings 是 frozen 单例）——单在 test_multiprocess.py
+# 模块级设已太晚：conftest 的 myink.db 导入会先触发 settings 冻结。
 os.environ["QUEUE_PREFIX"] = "-mp-"
 # 本地 compose 对外暴露的 RabbitMQ 用户。显式传入的 CI/开发环境配置仍优先。
-os.environ.setdefault("AMQP_URL", "amqp://aiink:aiink@localhost:5672/")
+os.environ.setdefault("AMQP_URL", "amqp://myink:myink@localhost:5672/")
 
 import uuid
 
 import pytest
 from sqlalchemy import delete as sa_delete, select as sa_select
 
-from aiink.db import new_session
-from aiink.models import AgentRun, Project, ProjectSettings
+from myink.db import new_session
+from myink.models import AgentRun, Project, ProjectSettings
 
 from test_flow import (  # noqa: F401  (re-export fixtures/StubProvider)
     FakeEmbedder,
@@ -48,7 +48,7 @@ def temp_project():
     """
     with new_session() as db:
         row = db.execute(sa_select(Project).where(Project.title == "九州问天")).scalars().first()
-        assert row is not None, "请先运行 `aiink init`"
+        assert row is not None, "请先运行 `myink init`"
         demo = row
         b = Project(user_id=demo.user_id, title=f"test书-{uuid.uuid4().hex[:6]}",
                     genre=demo.genre, target_words=demo.target_words)

@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from aiink.workflow import nodes
+from myink.workflow import nodes
 
 _PLAN = {
     "goals": ["查明玉佩异动"],

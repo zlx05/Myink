@@ -11,8 +11,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"aiink/gateway/internal/redis"
-	"aiink/gateway/internal/sse"
+	"myink/gateway/internal/redis"
+	"myink/gateway/internal/sse"
 )
 
 // 硬超时兜底：防止终态事件缺失时连接挂死（正常由 done/failed 事件收尾）

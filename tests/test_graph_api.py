@@ -12,9 +12,9 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.db import new_session, tenant_session
-from aiink.models import (Chapter, Character, Entity, Faction, Foreshadow,
+from myink.api.main import app
+from myink.db import new_session, tenant_session
+from myink.models import (Chapter, Character, Entity, Faction, Foreshadow,
                           Location, Project, Relation, User)
 
 client = TestClient(app)
@@ -23,13 +23,13 @@ client = TestClient(app)
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid) -> dict:
-    """请求头：X-AiInk-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 def _seed_graph(pid: str) -> None:
@@ -128,7 +128,7 @@ def test_graph_unifies_location_entity_and_registry(temp_project):
 
 def test_persist_location_entity_mirrors_with_parent(temp_project):
     """new_entity 地点候选 → Entity 落库 + 镜像进 Location 注册表并挂 parent_id（§9 层级）。"""
-    from aiink.workflow import nodes
+    from myink.workflow import nodes
 
     cands = [
         {"kind": "new_entity", "source_chapter": 1, "confidence": 0.9,

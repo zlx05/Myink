@@ -2,7 +2,7 @@
 
 export const WALLPAPER_MAX_BYTES = 2 * 1024 * 1024
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-const DB_NAME = 'aiink-theme'
+const DB_NAME = 'myink-theme'
 const STORE = 'files'
 const LEGACY_KEY = 'wallpaper'
 

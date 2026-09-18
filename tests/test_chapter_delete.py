@@ -14,10 +14,10 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from aiink.api.routes_chapters import delete_chapter
-from aiink.db import tenant_session
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import (Alias, Chapter, Character, CharacterState, EmbeddingRow,
+from myink.api.routes_chapters import delete_chapter
+from myink.db import tenant_session
+from myink.memory.vector_store import PgvectorStore
+from myink.models import (Alias, Chapter, Character, CharacterState, EmbeddingRow,
                           Entity, Event, MemoryCandidate, Project, Relation)
 
 ZERO_VEC = [0.0] * 1024

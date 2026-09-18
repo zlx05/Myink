@@ -17,24 +17,24 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.db import new_session, tenant_session
-from aiink.models import Alias, Character, Entity, MemoryCandidate
-from aiink.workflow import nodes
+from myink.api.main import app
+from myink.db import new_session, tenant_session
+from myink.models import Alias, Character, Entity, MemoryCandidate
+from myink.workflow import nodes
 
 client = TestClient(app)
 
 
 def _demo_user_id() -> uuid.UUID:
-    from aiink.models import User
+    from myink.models import User
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 _CARD = {"name": "沈青", "identity": "青云宗大师姐", "role": "主角师姐",
@@ -147,7 +147,7 @@ def _stub_llm(monkeypatch, payload):
     import json
     from types import SimpleNamespace
 
-    from aiink.workflow import nodes
+    from myink.workflow import nodes
 
     def fake_llm(db, state, node, role, chain, messages, **kw):
         return SimpleNamespace(error=None, content=json.dumps(payload, ensure_ascii=False)), []

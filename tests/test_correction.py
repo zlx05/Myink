@@ -13,16 +13,16 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from aiink.api.routes_chapters import ContentUpdate, correct_chapter_memory, delete_chapter, update_chapter_content
-from aiink.db import tenant_session
-from aiink.memory import correction
-from aiink.memory.correction import (apply_changeset_to_pool, apply_memory_removal,
+from myink.api.routes_chapters import ContentUpdate, correct_chapter_memory, delete_chapter, update_chapter_content
+from myink.db import tenant_session
+from myink.memory import correction
+from myink.memory.correction import (apply_changeset_to_pool, apply_memory_removal,
                                      diff_changeset)
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import (Chapter, CharacterState, EmbeddingRow, Event, Fact,
+from myink.memory.vector_store import PgvectorStore
+from myink.models import (Chapter, CharacterState, EmbeddingRow, Event, Fact,
                           Foreshadow, MemoryCandidate, Project, Relation)
-from aiink.providers.base import ModelProvider, ModelResponse
-from aiink.workflow import nodes
+from myink.providers.base import ModelProvider, ModelResponse
+from myink.workflow import nodes
 
 CID, CID2 = uuid.uuid4(), uuid.uuid4()
 ZERO_VEC = [0.0] * 1024
@@ -52,7 +52,7 @@ class ExtractStub(ModelProvider):
 
 @pytest.fixture
 def extract_stub(monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     stub = ExtractStub()
     monkeypatch.setattr(providers_mod, "default_provider", stub)

@@ -28,7 +28,7 @@ export const WORKSPACE_PREVIEW_SIZE = { width: 1320, height: 540 }
 
 // 外观预览钉死这一套：万古魔尊第一章。不读用户书库。
 export const PINNED_WORKSPACE_PREVIEW = {
-  brand: 'Ai Ink',
+  brand: 'Myink',
   user: 'demo',
   book: '万古魔尊',
   books: ['长安夜行', '星舰远征', '都市医馆', '九州问天', '渊薮纪', '卷规划验证', '深渊天梯', '万古魔尊', '暗火'],

@@ -14,11 +14,11 @@ import pytest
 import typer
 from sqlalchemy import func, select
 
-from aiink.cli import embed_backfill
-from aiink.config import settings
-from aiink.db import tenant_session
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import EmbeddingRow, Event, Fact
+from myink.cli import embed_backfill
+from myink.config import settings
+from myink.db import tenant_session
+from myink.memory.vector_store import PgvectorStore
+from myink.models import EmbeddingRow, Event, Fact
 
 
 @pytest.fixture
@@ -28,7 +28,7 @@ def embed_on(monkeypatch):
     settings 是 frozen 单例 → 用 dataclasses.replace 造副本，不动单例本身。
     """
     def _set(enabled: bool):
-        monkeypatch.setattr("aiink.config.settings",
+        monkeypatch.setattr("myink.config.settings",
                             dataclasses.replace(settings, embed_enabled=enabled))
     return _set
 

@@ -17,9 +17,9 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
-from aiink.api.main import app
-from aiink.db import new_session
-from aiink.models import AgentRun, Task, User
+from myink.api.main import app
+from myink.db import new_session
+from myink.models import AgentRun, Task, User
 
 client = TestClient(app)
 
@@ -27,12 +27,12 @@ client = TestClient(app)
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 def _add_task(pid, *, task_type="chapter_generate", status="done", chapter_seq=None,

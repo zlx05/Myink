@@ -18,11 +18,11 @@ import json
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from aiink.db import tenant_session
-from aiink.memory.recall import build_context
-from aiink.models import Character, Entity
-from aiink.providers.base import ModelProvider, ModelResponse
-from aiink.workflow import nodes
+from myink.db import tenant_session
+from myink.memory.recall import build_context
+from myink.models import Character, Entity
+from myink.providers.base import ModelProvider, ModelResponse
+from myink.workflow import nodes
 
 _BASE = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
@@ -75,7 +75,7 @@ def test_explicit_scene_names_rank_without_any_chapter_outline(temp_project):
 
 def test_plan_cast_snapshots_follow_the_cast_not_the_roster(temp_project, monkeypatch):
     """快照取自 cast。名单前 12 人全是路人时，若还按旧口径取人，林砚/苏晚会整个缺席。"""
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     pid = uuid.UUID(temp_project)
     with tenant_session(temp_project) as db:
@@ -104,7 +104,7 @@ def test_plan_cast_snapshots_follow_the_cast_not_the_roster(temp_project, monkey
 
 def test_plan_cast_rejects_empty_cast_and_keeps_state_untouched(temp_project, monkeypatch):
     """空 cast 无意义：`ChapterCast` 的 min_length=1 兜住，error 透传而不写入半成品。"""
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     provider = _CastProvider(cast=[])
     monkeypatch.setattr(providers_mod, "default_provider", provider)
@@ -120,7 +120,7 @@ def test_plan_cast_rejects_empty_cast_and_keeps_state_untouched(temp_project, mo
 
 def test_plan_cast_carries_replan_feedback_across_the_context_rebuild(temp_project, monkeypatch):
     """重取上下文会重建 short_context；replan 反馈必须显式带回，否则重规划看不到失败原因。"""
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     provider = _CastProvider(cast=["林砚"])
     monkeypatch.setattr(providers_mod, "default_provider", provider)

@@ -21,13 +21,13 @@ import uuid
 import pytest
 from fastapi import HTTPException
 
-from aiink.db import tenant_session
-from aiink.memory.recall import build_context
-from aiink.models import WritingLesson
-from aiink.providers.base import ModelResponse
-from aiink.workflow import nodes, prompts
-from aiink.workflow.batch_graph import build_batch_graph, node_reflexion
-from aiink.workflow.chapter_graph import build_chapter_graph
+from myink.db import tenant_session
+from myink.memory.recall import build_context
+from myink.models import WritingLesson
+from myink.providers.base import ModelResponse
+from myink.workflow import nodes, prompts
+from myink.workflow.batch_graph import build_batch_graph, node_reflexion
+from myink.workflow.chapter_graph import build_chapter_graph
 
 from test_flow import StubProvider
 
@@ -106,8 +106,8 @@ class ReflexionBatchStub(StubProvider):
 
 def _install(monkeypatch, chapter_stub, batch_stub):
     """装两个 stub：default_provider（单章）+ batch_graph.make_chain（batch_plan/reflexion）。"""
-    import aiink.providers as providers_mod
-    import aiink.workflow.batch_graph as bg_mod
+    import myink.providers as providers_mod
+    import myink.workflow.batch_graph as bg_mod
 
     monkeypatch.setattr(providers_mod, "default_provider", chapter_stub)
     monkeypatch.setattr(bg_mod, "make_chain", lambda role, **_kwargs: _Chain(batch_stub))
@@ -130,9 +130,9 @@ def _run_batch(project_id: str, monkeypatch, batch_stub=None,
     bg_mod = _install(monkeypatch, chapter_stub, batch_stub)
     thread = str(uuid.uuid4())
     from langgraph.checkpoint.memory import InMemorySaver
-    from aiink.workflow.batch_graph import BatchReviewError
-    from aiink.workflow.runner import resume_thread
-    from aiink.models import MemoryCandidate
+    from myink.workflow.batch_graph import BatchReviewError
+    from myink.workflow.runner import resume_thread
+    from myink.models import MemoryCandidate
     checkpoint = InMemorySaver()
     graph = build_batch_graph(build_chapter_graph(checkpointer=checkpoint), checkpointer=checkpoint)
     initial = {"project_id": project_id, "batch_task_id": thread, "size": size,
@@ -157,7 +157,7 @@ def _run_batch(project_id: str, monkeypatch, batch_stub=None,
 def _reflexion_runs(project_id: str, batch_task_id: str):
     from sqlalchemy import select
 
-    from aiink.models import AgentRun
+    from myink.models import AgentRun
 
     with tenant_session(project_id) as db:
         rows = db.execute(select(AgentRun).where(
@@ -169,7 +169,7 @@ def _reflexion_runs(project_id: str, batch_task_id: str):
 def _count_lessons(project_id: str) -> int:
     from sqlalchemy import func
 
-    from aiink.models import AgentRun  # noqa: F401  (RLS 覆盖 writing_lessons，同一会话即可)
+    from myink.models import AgentRun  # noqa: F401  (RLS 覆盖 writing_lessons，同一会话即可)
 
     with tenant_session(project_id) as db:
         return db.query(WritingLesson).filter(
@@ -382,8 +382,8 @@ def test_confirm_lesson_and_reject(temp_project):
 
 
 def test_lessons_api(temp_project):
-    from aiink.api.routes_lessons import confirm_lesson as api_confirm
-    from aiink.api.routes_lessons import list_lessons, reject_lesson as api_reject
+    from myink.api.routes_lessons import confirm_lesson as api_confirm
+    from myink.api.routes_lessons import list_lessons, reject_lesson as api_reject
 
     pid = uuid.UUID(temp_project)
     with tenant_session(temp_project) as db:
@@ -437,7 +437,7 @@ class WindowReflexionChain:
 
 def _seed_audit_runs(temp_project: str, findings_by_seq: dict):
     """造单章任务（done）+ settled audit findings，模拟已写完章节的审计台账。"""
-    from aiink.models import AgentRun, Task
+    from myink.models import AgentRun, Task
 
     with tenant_session(temp_project) as db:
         for seq, findings in findings_by_seq.items():
@@ -503,7 +503,7 @@ def test_chapter_window_reflexion_no_findings_shortcircuits(temp_project, monkey
 
 def test_chapter_window_includes_batch_subthreads(temp_project, monkeypatch):
     """批次子线程 task_id `{batch}:ch{seq}` 纳入窗口（章号从后缀解析，无需 Task 行）。"""
-    from aiink.models import AgentRun
+    from myink.models import AgentRun
 
     with tenant_session(temp_project) as db:
         db.add(AgentRun(project_id=uuid.UUID(temp_project), task_id="batch-x:ch3", node="audit",
@@ -531,7 +531,7 @@ def test_chapter_window_includes_batch_subthreads(temp_project, monkeypatch):
 
 def test_maybe_reflexion_interval_and_swallow(temp_project, monkeypatch):
     """worker 钩子：seq 命中间隔才触发；异常被吞（复盘不阻塞任务终态）。"""
-    from aiink.worker.processor import _maybe_reflexion
+    from myink.worker.processor import _maybe_reflexion
 
     calls = []
 

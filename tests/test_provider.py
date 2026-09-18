@@ -13,8 +13,8 @@ from __future__ import annotations
 import json
 from types import SimpleNamespace
 
-from aiink.providers.base import ModelResponse
-from aiink.providers.deepseek import DeepSeekProvider, MAX_RETRIES
+from myink.providers.base import ModelResponse
+from myink.providers.deepseek import DeepSeekProvider, MAX_RETRIES
 
 
 def _fake_create(content: str = "", reasoning_content: str = ""):

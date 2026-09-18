@@ -3,12 +3,12 @@ import uuid
 from types import SimpleNamespace
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
-from aiink.db import tenant_session
-from aiink.models import Chapter, MemoryCandidate, Character, CharacterState
-from aiink.workflow import nodes
-from aiink.workflow.chapter_graph import route_after_audit, build_chapter_graph
-from aiink.workflow.review import resolve_review, same_proposal
-from aiink.api.routes_candidates import reject_candidate, RejectCandidateIn
+from myink.db import tenant_session
+from myink.models import Chapter, MemoryCandidate, Character, CharacterState
+from myink.workflow import nodes
+from myink.workflow.chapter_graph import route_after_audit, build_chapter_graph
+from myink.workflow.review import resolve_review, same_proposal
+from myink.api.routes_candidates import reject_candidate, RejectCandidateIn
 
 
 @pytest.mark.parametrize('verdict,rev,plan,expected', [
@@ -83,7 +83,7 @@ def test_proposal_identity_ignores_extraction_metadata():
 
 
 def test_replan_retains_actionable_feedback():
-    from aiink.workflow.chapter_graph import node_reset_replan
+    from myink.workflow.chapter_graph import node_reset_replan
     state={'context':{'short_context':[{'text':'前情'}]},
            'audit_verdict':{'verdict':'replan','reasons':['目标重复上一章'],'findings':[]}}
     result=node_reset_replan(state)
@@ -97,8 +97,8 @@ def test_audit_pass_with_major_finding_does_not_bypass_route():
 
 
 def test_review_pool_does_not_count_as_completed_chapter(temp_project):
-    from aiink.models import AgentRun
-    from aiink.api.routes_tasks import _batch_done_chapters
+    from myink.models import AgentRun
+    from myink.api.routes_tasks import _batch_done_chapters
     tid=str(uuid.uuid4())
     with tenant_session(temp_project) as db:
         nodes.record_plain(db,project_id=temp_project,task_id=tid+':ch1',node='persist',detail={'status':'auto_confirm'})

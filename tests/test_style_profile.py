@@ -10,7 +10,7 @@
 - 注入：确认落库后 _style_section 渲染含 lexicon_tendency / reference_excerpts /
   frequent_words / 节奏基线；既有键渲染不变（L1/L2 零回归锚点）。
 
-模式 A（monkeypatch aiink.providers.default_provider）：make_chain 调用时读全局单例，
+模式 A（monkeypatch myink.providers.default_provider）：make_chain 调用时读全局单例，
 与 test_flow stub_provider 同款。
 """
 
@@ -22,19 +22,19 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.db import new_session, tenant_session
-from aiink.memory.repository import get_settings
-from aiink.models import AgentRun, ProjectSettings, User
-from aiink.providers.base import ModelProvider, ModelResponse
-from aiink.style_extract import (
+from myink.api.main import app
+from myink.db import new_session, tenant_session
+from myink.memory.repository import get_settings
+from myink.models import AgentRun, ProjectSettings, User
+from myink.providers.base import ModelProvider, ModelResponse
+from myink.style_extract import (
     _split_sentences,
     analyze_sample_stats,
     extract_style_profile,
     merge_style_draft,
     validate_profile,
 )
-from aiink.workflow.prompts import _style_section
+from myink.workflow.prompts import _style_section
 
 client = TestClient(app)
 
@@ -57,13 +57,13 @@ _STYLE_PAYLOAD = {
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-AiInk-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 class _StyleStub(ModelProvider):
@@ -89,7 +89,7 @@ class _StyleStub(ModelProvider):
 
 @pytest.fixture
 def style_stub(monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     def _install(payload: dict | None = None, *, raw: str | None = None, raise_error: bool = False) -> _StyleStub:
         stub = _StyleStub(payload, raw=raw, raise_error=raise_error)

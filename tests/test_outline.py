@@ -6,12 +6,12 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.db import new_session, tenant_session
-from aiink.models import AgentRun, User, VolumeOutline
-from aiink.providers.base import ModelProvider, ModelResponse
-from aiink.workflow import prompts
-from aiink.workflow.outline import STAGE_SPAN, normalize_outline
+from myink.api.main import app
+from myink.db import new_session, tenant_session
+from myink.models import AgentRun, User, VolumeOutline
+from myink.providers.base import ModelProvider, ModelResponse
+from myink.workflow import prompts
+from myink.workflow.outline import STAGE_SPAN, normalize_outline
 
 client = TestClient(app)
 
@@ -57,12 +57,12 @@ _OUTLINE = {
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 class _OutlineStub(ModelProvider):
@@ -90,7 +90,7 @@ def _outline_run_count(pid: str) -> int:
 
 
 def test_outline_draft_returns_draft_not_persisted(temp_project, monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
 
     monkeypatch.setattr(providers_mod, "default_provider", _OutlineStub(_OUTLINE))
     resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
@@ -111,7 +111,7 @@ def test_outline_draft_returns_draft_not_persisted(temp_project, monkeypatch):
 
 
 def test_outline_draft_degraded_on_provider_error(temp_project, monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider", _OutlineStub(raise_error=True))
     resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
                        headers=_h(_demo_user_id()),
@@ -121,7 +121,7 @@ def test_outline_draft_degraded_on_provider_error(temp_project, monkeypatch):
 
 
 def test_outline_draft_degraded_on_bad_json(temp_project, monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider",
                         _OutlineStub(raw="not json{{{", raise_error=False))
     resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
@@ -134,7 +134,7 @@ def test_outline_draft_degraded_on_bad_json(temp_project, monkeypatch):
 
 
 def test_outline_draft_degraded_wrong_shape(temp_project, monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider",
                         _OutlineStub({"arc": ["起"], "not_volumes": []}))
     resp = client.post(f"/internal/v1/projects/{temp_project}/outline-draft",
@@ -147,7 +147,7 @@ def test_outline_draft_degraded_wrong_shape(temp_project, monkeypatch):
 
 
 def test_outline_draft_validation_400(temp_project, monkeypatch):
-    import aiink.providers as providers_mod
+    import myink.providers as providers_mod
     monkeypatch.setattr(providers_mod, "default_provider", _OutlineStub(_OUTLINE))
     url = f"/internal/v1/projects/{temp_project}/outline-draft"
     assert client.post(url, headers=_h(_demo_user_id()),

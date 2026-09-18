@@ -29,18 +29,18 @@ import uuid
 import pytest
 from sqlalchemy import select
 
-from aiink.db import tenant_session
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import (
+from myink.db import tenant_session
+from myink.memory.vector_store import PgvectorStore
+from myink.models import (
     Chapter, Character, CharacterState, Event, Foreshadow, GlobalAuditReport,
     PlotThread, ProjectSettings, Relation, VolumeOutline,
 )
-from aiink.providers.base import ModelResponse
-from aiink.schemas import ChapterPlan, MutationCandidate
-from aiink.validation import global_audit as ga
-from aiink.validation import ledger_l2 as l2
-from aiink.validation.l1 import L1Validator, _key
-from aiink.validation.service import outline_deviation
+from myink.providers.base import ModelResponse
+from myink.schemas import ChapterPlan, MutationCandidate
+from myink.validation import global_audit as ga
+from myink.validation import ledger_l2 as l2
+from myink.validation.l1 import L1Validator, _key
+from myink.validation.service import outline_deviation
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 A, B = uuid.uuid4(), uuid.uuid4()
@@ -86,8 +86,8 @@ DRIFT_QUOTE = "林砚拍桌而起：'卧槽，这也太离谱了吧，直接开�
 
 @pytest.fixture(scope="module", autouse=True)
 def _ensure_audit_reports_table():
-    """幂等补 global_audit_reports 表（活 demo 库跑过 init 的缺新表，不依赖重跑 aiink init）。"""
-    from aiink.db import ensure_global_audit_reports
+    """幂等补 global_audit_reports 表（活 demo 库跑过 init 的缺新表，不依赖重跑 myink init）。"""
+    from myink.db import ensure_global_audit_reports
 
     ensure_global_audit_reports()
 
@@ -111,9 +111,9 @@ class DeterministicFakeEmbedder:
 @pytest.fixture(autouse=True)
 def fake_embedder(monkeypatch):
     fake = DeterministicFakeEmbedder()
-    monkeypatch.setattr("aiink.validation.l1.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.validation.l1.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.workflow.nodes.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: fake)
     return fake
 
 

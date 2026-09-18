@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from sqlalchemy import text
 
-from aiink.db import new_session, tenant_session
-from aiink.seed import _SAMPLE_BOOKS, DEMO_USERNAME, create_sample_books
+from myink.db import new_session, tenant_session
+from myink.seed import _SAMPLE_BOOKS, DEMO_USERNAME, create_sample_books
 
 
 def test_sample_books_idempotent():

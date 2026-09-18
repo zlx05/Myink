@@ -12,7 +12,7 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	"aiink/gateway/internal/redis"
+	"myink/gateway/internal/redis"
 )
 
 const (

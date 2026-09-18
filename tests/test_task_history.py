@@ -2,9 +2,9 @@
 
 import uuid
 
-from aiink.api.routes_tasks import _task_payload, list_project_tasks
-from aiink.db import new_session
-from aiink.models import AgentRun, Task
+from myink.api.routes_tasks import _task_payload, list_project_tasks
+from myink.db import new_session
+from myink.models import AgentRun, Task
 
 
 def _task(project_id: str, *, chapter_seq: int) -> Task:

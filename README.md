@@ -1,4 +1,4 @@
-# Ai Ink — 长篇网文多 Agent 创作系统
+# Myink — 长篇网文多 Agent 创作系统
 
 面向长篇网络小说连续创作的多 Agent 智能创作系统。通过多 Agent 编排、审核路由、复盘沉淀与多级记忆召回，旨在减少长文中的人设不一致、战力崩坏、剧情前后矛盾、长上下文过载等问题，实现「规划 → 生成 → 校验 → 记忆沉淀」的完整创作闭环。
 
@@ -64,7 +64,7 @@ docker compose up -d --build
 ## 项目结构
 
 ```
-src/aiink/        Python 推理层（workflow 编排 / api / models / providers）
+src/myink/        Python 推理层（workflow 编排 / api / models / providers）
 gateway/          Go 网关（转发 / 鉴权 / SSE / 静态托管）
 web/              React + TypeScript 前端
 tests/            Python 测试（含冲突样例评测集）
@@ -84,7 +84,7 @@ docker/           initdb 脚本
 - Python：编排、校验、租户隔离、版本并发冲突、上下文预算及 OpenAPI 契约回归。
 - 前端：工具函数与 jsdom 编辑器交互回归，另运行 TypeScript / Vite 构建。
 - Go：网关契约、转发、Redis 闸门与 RabbitMQ 集成测试；CI 拒绝静默跳过。
-- 契约：`aiink contract export` 导出后提交 `spec/api-openapi.json`；CI 检查漂移。
+- 契约：`myink contract export` 导出后提交 `spec/api-openapi.json`；CI 检查漂移。
 - `bash scripts/ci-local.sh` 使用独立临时基础设施，不改动开发作品库。设置 `SKIP_IMAGES=1` 可跳过镜像构建。详细环境见 [部署文档](docs/DEPLOY.md)。
 
-面试演示步骤、证据边界和下一阶段真实评测方案见 [项目演示与验证](docs/DEMO.md)。测试数量以实际运行输出为准，不将机制测试通过率表述为真实小说质量。
+项目演示步骤、证据边界和下一阶段真实评测方案见 [项目演示与验证](docs/DEMO.md)。测试数量以实际运行输出为准，不将机制测试通过率表述为真实小说质量。

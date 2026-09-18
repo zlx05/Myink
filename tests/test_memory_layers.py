@@ -20,16 +20,16 @@ import json
 
 import pytest
 
-from aiink.config import settings
-from aiink.context_budget import (
+from myink.config import settings
+from myink.context_budget import (
     _DROP_ORDER,
     MEMORY_LAYERS,
     NODE_INJECTIONS,
     estimate_tokens,
     fit_prompt,
 )
-from aiink.schemas.contract import RetrievedContext
-from aiink.workflow import prompts
+from myink.schemas.contract import RetrievedContext
+from myink.workflow import prompts
 
 # 每个记忆块注哨兵的字段：必须是该块渲染器真正读的字段，否则哨兵不出现，断言会假红。
 _SENTINEL_FIELD: dict[str, tuple[str, dict]] = {

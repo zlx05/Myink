@@ -4,23 +4,23 @@ from __future__ import annotations
 
 
 def test_checkpointer_normalizes_localhost_for_background_pool_workers():
-    from aiink.db_url import normalize_localhost_database_url
-    from aiink.workflow.checkpointer import _psycopg_conn_str
+    from myink.db_url import normalize_localhost_database_url
+    from myink.workflow.checkpointer import _psycopg_conn_str
 
     assert _psycopg_conn_str(
-        "postgresql+psycopg://user:pass@localhost:5432/aiink?sslmode=disable"
-    ) == "postgresql://user:pass@127.0.0.1:5432/aiink?sslmode=disable"
+        "postgresql+psycopg://user:pass@localhost:5432/myink?sslmode=disable"
+    ) == "postgresql://user:pass@127.0.0.1:5432/myink?sslmode=disable"
     assert _psycopg_conn_str(
-        "postgresql+psycopg://user:pass@aiink-postgres:5432/aiink"
-    ) == "postgresql://user:pass@aiink-postgres:5432/aiink"
+        "postgresql+psycopg://user:pass@myink-postgres:5432/myink"
+    ) == "postgresql://user:pass@myink-postgres:5432/myink"
     assert normalize_localhost_database_url(
-        "postgresql+psycopg://user:pass@localhost:5432/aiink"
-    ) == "postgresql+psycopg://user:pass@127.0.0.1:5432/aiink"
+        "postgresql+psycopg://user:pass@localhost:5432/myink"
+    ) == "postgresql+psycopg://user:pass@127.0.0.1:5432/myink"
 
 
 def test_checkpointer_uses_health_checked_pool(monkeypatch):
     """长期缓存的 saver 必须通过池 checkout 健检，不能永久持有一个失效连接。"""
-    import aiink.workflow.checkpointer as module
+    import myink.workflow.checkpointer as module
 
     captured = {}
 

@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/pyapi"
-	"aiink/gateway/internal/redis"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/pyapi"
+	"myink/gateway/internal/redis"
 )
 
 type HealthHandler struct {

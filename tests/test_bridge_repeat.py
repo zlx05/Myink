@@ -17,12 +17,12 @@ import uuid
 
 import pytest
 
-from aiink.db import tenant_session
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import Event
-from aiink.schemas import MutationCandidate
-from aiink.validation.l1 import L1Validator
-from aiink.validation.service import ValidationService
+from myink.db import tenant_session
+from myink.memory.vector_store import PgvectorStore
+from myink.models import Event
+from myink.schemas import MutationCandidate
+from myink.validation.l1 import L1Validator
+from myink.validation.service import ValidationService
 
 REALM_ORDER = ["炼气", "筑基", "金丹", "元婴", "化神", "大乘", "渡劫"]
 
@@ -59,9 +59,9 @@ class RaiseEmbedder:
 @pytest.fixture(autouse=True)
 def fake_embedder(monkeypatch):
     fake = DeterministicFakeEmbedder()
-    monkeypatch.setattr("aiink.validation.l1.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.workflow.nodes.get_embedder", lambda: fake)
-    monkeypatch.setattr("aiink.memory.recall.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.validation.l1.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.workflow.nodes.get_embedder", lambda: fake)
+    monkeypatch.setattr("myink.memory.recall.get_embedder", lambda: fake)
     return fake
 
 
@@ -188,7 +188,7 @@ def test_no_vector_data_skip(temp_project):
 def test_embedder_raises_skips(temp_project, monkeypatch):
     """get_embedder 抛错 → 整方法降级，静默跳过不阻塞。"""
     _seed_event(temp_project, CH5, 5)
-    monkeypatch.setattr("aiink.validation.l1.get_embedder", lambda: RaiseEmbedder())
+    monkeypatch.setattr("myink.validation.l1.get_embedder", lambda: RaiseEmbedder())
     assert _check(temp_project, [_cand(CUR_IDENT)]) == []
 
 

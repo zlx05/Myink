@@ -1,4 +1,4 @@
-module aiink/gateway
+module myink/gateway
 
 go 1.25.12
 

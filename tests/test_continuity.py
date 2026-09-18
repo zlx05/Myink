@@ -3,17 +3,17 @@ import uuid
 
 import pytest
 
-from aiink.db import tenant_session
-from aiink.memory.recall import build_context, _tail_of
-from aiink.models import Chapter, Event
-from aiink.schemas import ChapterPlan
-from aiink.validation.continuity import (
+from myink.db import tenant_session
+from myink.memory.recall import build_context, _tail_of
+from myink.models import Chapter, Event
+from myink.schemas import ChapterPlan
+from myink.validation.continuity import (
     check_transition_anchor,
     opening_excerpt,
     repair_generated_transition_anchor,
 )
-from aiink.workflow import nodes, prompts
-from aiink.workflow.chapter_graph import build_chapter_graph
+from myink.workflow import nodes, prompts
+from myink.workflow.chapter_graph import build_chapter_graph
 
 
 TAIL = '沈砚已经跨进体育馆。铁门在身后关上。他将受伤的周野扶到长椅边。'

@@ -1,12 +1,12 @@
 // JWT 存取（localStorage 单源）+ 401 事件（解耦 context↔api 循环依赖）。
-// 业务请求带 Bearer；网关验签后透传 X-AiInk-User 给 Python 做归属断言（§14.1 ③）。
+// 业务请求带 Bearer；网关验签后透传 X-Myink-User 给 Python 做归属断言（§14.1 ③）。
 
-const TOKEN_KEY = 'aiink.token'
-const USER_ID_KEY = 'aiink.user_id'
-const USERNAME_KEY = 'aiink.username'
+const TOKEN_KEY = 'myink.token'
+const USER_ID_KEY = 'myink.user_id'
+const USERNAME_KEY = 'myink.username'
 
 /** 401 登出事件名：api 层 dispatch，AuthContext 订阅 */
-export const UNAUTHORIZED_EVENT = 'aiink:unauthorized'
+export const UNAUTHORIZED_EVENT = 'myink:unauthorized'
 
 export interface StoredSession {
   token: string

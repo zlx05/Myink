@@ -2,7 +2,7 @@
 
 本文是**公网上线**时才做的安全方案，不改当前本地 MVP 行为。本地仍可无密码进 `demo`；`APP_ENV=prod` 已拒绝演示签发。落地时按本文替换，不要把 Compose 演示配置原样暴露公网。
 
-对齐现有隔离口径（`src/aiink/db.py` §14.1）：事务级 `SET LOCAL`、FORCE RLS、未设上下文空集、应用角色 `NOBYPASSRLS`、网关 JWT + 应用层第二道门。密钥与密码的租户粒度是 **`user_id`**，不是 `project_id`。禁止把现有 `app.tenant_id = project_id` 策略套到 `users` 或密钥行上。
+对齐现有隔离口径（`src/myink/db.py` §14.1）：事务级 `SET LOCAL`、FORCE RLS、未设上下文空集、应用角色 `NOBYPASSRLS`、网关 JWT + 应用层第二道门。密钥与密码的租户粒度是 **`user_id`**，不是 `project_id`。禁止把现有 `app.tenant_id = project_id` 策略套到 `users` 或密钥行上。
 
 ---
 
@@ -11,7 +11,7 @@
 | 面 | 现状 | 上线后的真实风险 |
 |---|---|---|
 | 登录 | `POST /auth/token` 只收用户名即发 JWT | 扫到用户名就能进 |
-| 用户表 | `users` / `projects` **故意无 RLS** | `aiink_app` 可 `SELECT * FROM users` |
+| 用户表 | `users` / `projects` **故意无 RLS** | `myink_app` 可 `SELECT * FROM users` |
 | 模型 Key | 密文在 `users.environment` JSON | 与根表同命运：一次查询拖走全站密文 |
 | 加密 | Fernet，主密钥 `MODEL_CREDENTIAL_KEY` 或回落 `JWT_SECRET` | 回落等于两用一把钥匙；换密钥旧密文全废 |
 | 登录限流 | 网关全站令牌桶（默认 20/秒） | 挡不住按用户名撞库 |
@@ -42,7 +42,7 @@
 ```
 浏览器
   → 网关（验 JWT / 登录限流 / 唯一公网入口）
-    → Python API（127.0.0.1，信 X-AiInk-User）
+    → Python API（127.0.0.1，信 X-Myink-User）
          ├─ 登录：SECURITY DEFINER 校验函数（应用角色不能直接 SELECT 哈希）
          ├─ 根表 users/projects：仍无 RLS，只列自己的书
          ├─ 凭据表：SET LOCAL app.user_id + FORCE RLS
@@ -111,14 +111,14 @@ USING (
 ```sql
 REVOKE ALL ON user_credentials FROM PUBLIC;
 GRANT SELECT (id, user_id, name, protocol, base_url, model)
-  ON user_credentials TO aiink_app;
+  ON user_credentials TO myink_app;
 -- api_key_encrypted：不 GRANT SELECT 给业务角色
 ```
 
 解密走 owner 定义的函数，例如：
 
 ```text
-aiink_decrypt_credential(credential_id uuid) RETURNS text
+myink_decrypt_credential(credential_id uuid) RETURNS text
 SECURITY DEFINER
 -- 函数体内再断言 user_id = current_setting('app.user_id')
 -- 用库外主密钥或仅返回已加密行给应用层 Fernet（二选一，见 4.4）
@@ -153,13 +153,13 @@ Worker 必须能在用户离线时调模型，因此**不能**用登录密码当
 做法：应用角色 **REVOKE SELECT (password_hash)**。校验只通过：
 
 ```text
-aiink_verify_password(username, password_pepper_hash_input) RETURNS uuid
+myink_verify_password(username, password_pepper_hash_input) RETURNS uuid
 SECURITY DEFINER
 ```
 
 - 用户不存在也走一遍固定耗时的假哈希（防枚举）。
 - 只返回 `user_id` 或空，不返回哈希。
-- 函数属主为表 owner；`aiink_app` 只有 `EXECUTE`。
+- 函数属主为表 owner；`myink_app` 只有 `EXECUTE`。
 
 「暴力查表」在库这一层被关掉：`SELECT password_hash FROM users` 对业务角色应失败。
 
@@ -173,7 +173,7 @@ SECURITY DEFINER
 - 响应统一「用户名或密码错误」，不区分 404/403。
 - 生产必须带密码字段；无密码或演示签发路径保持 `DEMO_LOGIN_DISABLED`。
 
-JWT 维持现状：HS256、`sub=user_id`、短 TTL、`iss=aiink`。网关验签后透传 `X-AiInk-User`。生产 `JWT_SECRET` 独立、足够长，与 `MODEL_CREDENTIAL_KEY` / `PASSWORD_PEPPER` 三者互不相同。
+JWT 维持现状：HS256、`sub=user_id`、短 TTL、`iss=myink`。网关验签后透传 `X-Myink-User`。生产 `JWT_SECRET` 独立、足够长，与 `MODEL_CREDENTIAL_KEY` / `PASSWORD_PEPPER` 三者互不相同。
 
 ### 5.4 注册（若上线开放注册）
 
@@ -199,7 +199,7 @@ APP_ENV=prod
 JWT_SECRET=                 # 仅签/验 JWT
 MODEL_CREDENTIAL_KEY=       # 仅 Fernet 模型 Key
 PASSWORD_PEPPER=            # 仅密码哈希
-DATABASE_URL=               # aiink_app，NOBYPASSRLS
+DATABASE_URL=               # myink_app，NOBYPASSRLS
 ADMIN_DATABASE_URL=         # 仅迁移机
 ```
 
@@ -211,10 +211,10 @@ ADMIN_DATABASE_URL=         # 仅迁移机
 
 1. 补列 / 建 `user_credentials`，幂等 `ensure_*` 或 Alembic（上线应开始用版本迁移，不再只靠 init 补丁）。
 2. `ENABLE/FORCE RLS` + `user_isolation`；`REVOKE` 密文列与 `password_hash`。
-3. 建 `aiink_verify_password` / 密文读取函数。
+3. 建 `myink_verify_password` / 密文读取函数。
 4. 后台任务：读旧 `users.environment.models`，写入新表，清空旧键。
 5. 发布 API/Worker/网关（登录改密码、环境配置改走 `user_session`）。
-6. 确认 `SELECT api_key_encrypted FROM user_credentials` 以 `aiink_app` 无 GUC 执行返回 0 行或权限错误。
+6. 确认 `SELECT api_key_encrypted FROM user_credentials` 以 `myink_app` 无 GUC 执行返回 0 行或权限错误。
 7. 再打开公网。
 
 回滚：保留旧 JSON 一版备份至迁移窗口结束；函数与 REVOKE 回滚需 DDL，先在预发演练。
@@ -223,7 +223,7 @@ ADMIN_DATABASE_URL=         # 仅迁移机
 
 ## 9. 验收（上线门禁）
 
-用 `aiink_app` 连接、**不** `SET LOCAL`：
+用 `myink_app` 连接、**不** `SET LOCAL`：
 
 - `SELECT * FROM user_credentials` → 0 行或无权限。
 - `SELECT password_hash FROM users` → 无权限。

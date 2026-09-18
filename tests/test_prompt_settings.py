@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from aiink.workflow.prompts import (
+from myink.workflow.prompts import (
     _audit_messages,
     _extract_messages,
     _plan_messages,

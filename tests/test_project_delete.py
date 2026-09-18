@@ -23,16 +23,16 @@ from langgraph.checkpoint.base import Checkpoint, CheckpointMetadata
 from langgraph.checkpoint.postgres import PostgresSaver
 from psycopg import Connection
 
-from aiink.api.main import app
-from aiink.api.routes_book import delete_project
-from aiink.config import settings
-from aiink.db import new_session, tenant_session
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import (AgentRun, Chapter, EmbeddingRow, Event, Faction,
+from myink.api.main import app
+from myink.api.routes_book import delete_project
+from myink.config import settings
+from myink.db import new_session, tenant_session
+from myink.memory.vector_store import PgvectorStore
+from myink.models import (AgentRun, Chapter, EmbeddingRow, Event, Faction,
                           MemoryCandidate, Project, Task, User)
-from aiink.worker.redis_client import (book_key, get_redis, inflight_key,
+from myink.worker.redis_client import (book_key, get_redis, inflight_key,
                                        lock_key, sse_key)
-from aiink.workflow.checkpointer import build_checkpointer, delete_threads
+from myink.workflow.checkpointer import build_checkpointer, delete_threads
 
 client = TestClient(app)
 
@@ -42,12 +42,12 @@ ZERO_VEC = [0.0] * 1024
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid) -> dict:
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 def _seed_chapter(pid: str, seq: int) -> None:
@@ -201,7 +201,7 @@ def test_delete_project_survives_redis_failure(temp_project, monkeypatch):
     否则会留下最坏状态——任务已 commit 成 cancelled（cancelled 不可续跑）、书还在，
     用户既删不掉也无法 resume，只能手工修库。
     """
-    from aiink.api import routes_book
+    from myink.api import routes_book
 
     class _Boom:
         def exists(self, *args, **kwargs):

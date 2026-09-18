@@ -16,9 +16,9 @@ import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy import delete as sa_delete
 
-from aiink.api.main import app
-from aiink.db import new_session
-from aiink.models import Project, User
+from myink.api.main import app
+from myink.db import new_session
+from myink.models import Project, User
 
 client = TestClient(app)
 
@@ -37,7 +37,7 @@ def _delete_user(uid: uuid.UUID) -> None:
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 def _make_book(uid) -> dict:

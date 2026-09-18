@@ -8,7 +8,7 @@ export interface ActiveWrite {
   batchTotal: number | null
 }
 
-const keyFor = (projectId: string) => `aiink.activeWrite.${projectId}`
+const keyFor = (projectId: string) => `myink.activeWrite.${projectId}`
 
 export function readActiveWrite(projectId: string): ActiveWrite | null {
   if (!projectId) return null

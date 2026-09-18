@@ -1,4 +1,4 @@
-# Ai Ink Python 镜像：aiink-api（uvicorn）/ aiink-worker（队列消费）共用。
+# Myink Python 镜像：myink-api（uvicorn）/ myink-worker（队列消费）共用。
 # 只 COPY Python 侧（pyproject + src/），web/gateway/测试不进镜像。
 # 依赖全量安装（含 sentence-transformers/bge-m3，重但按 EMBED_ENABLED 开关加载，见 docker-compose.yml）。
 #
@@ -24,5 +24,5 @@ RUN --mount=type=cache,target=/root/.cache/pip pip install . --index-url ${PIP_I
 ENV EMBED_ENABLED=0
 
 EXPOSE 8100
-# 默认入口；compose 中 aiink-api 覆盖为 `aiink init && aiink-api`，worker 覆盖为 `aiink-worker`
-CMD ["aiink-api"]
+# 默认入口；compose 中 myink-api 覆盖为 `myink init && myink-api`，worker 覆盖为 `myink-worker`
+CMD ["myink-api"]

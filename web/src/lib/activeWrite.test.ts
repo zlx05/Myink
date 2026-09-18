@@ -17,6 +17,6 @@ it('remembers an in-flight write per book', () => {
 })
 
 it('ignores a broken payload instead of throwing', () => {
-  sessionStorage.setItem('aiink.activeWrite.book-a', '{')
+  sessionStorage.setItem('myink.activeWrite.book-a', '{')
   expect(readActiveWrite('book-a')).toBeNull()
 })

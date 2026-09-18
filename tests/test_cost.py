@@ -1,8 +1,8 @@
 """成本估算：官方价目覆盖 DeepSeek / OpenAI / Anthropic / MiniMax。"""
 
-from aiink.providers.base import ModelResponse, effective_cost, estimate_cost, lookup_prices
-from aiink.providers.connections import CONNECTIONS_KEY, price_table, price_tables_from_packed
-from aiink.providers.prices import USD_CNY
+from myink.providers.base import ModelResponse, effective_cost, estimate_cost, lookup_prices
+from myink.providers.connections import CONNECTIONS_KEY, price_table, price_tables_from_packed
+from myink.providers.prices import USD_CNY
 
 
 def test_lookup_prices_official_families():

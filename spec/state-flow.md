@@ -1,4 +1,4 @@
-# Ai Ink 批量自动写作状态流转图 — Phase 0
+# Myink 批量自动写作状态流转图 — Phase 0
 
 > **用途**：LangGraph 工作流（plan.md §6.3）的运行蓝图 + 节点契约 + 异常分支。实现阶段 1 时本图直接变为代码骨架：节点函数、`ChapterState` / `BatchState` TypedDict、条件路由函数 `route_after_audit`。
 >

@@ -16,9 +16,9 @@ import uuid
 
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.db import new_session, tenant_session
-from aiink.models import Character, CharacterState, Event, User
+from myink.api.main import app
+from myink.db import new_session, tenant_session
+from myink.models import Character, CharacterState, Event, User
 
 client = TestClient(app)
 
@@ -26,13 +26,13 @@ client = TestClient(app)
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid) -> dict:
-    """请求头：X-AiInk-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 def _seed_events(pid: str) -> dict[str, str]:

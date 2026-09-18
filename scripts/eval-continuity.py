@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
-from aiink.providers.deepseek import DeepSeekProvider
-from aiink.schemas import AuditVerdict, ChapterPlan
-from aiink.validation.continuity import check_transition_anchor
-from aiink.workflow import prompts
-from aiink.workflow.nodes import _check_draft, _parse_json
+from myink.providers.deepseek import DeepSeekProvider
+from myink.schemas import AuditVerdict, ChapterPlan
+from myink.validation.continuity import check_transition_anchor
+from myink.workflow import prompts
+from myink.workflow.nodes import _check_draft, _parse_json
 
 
 CASES = [

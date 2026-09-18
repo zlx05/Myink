@@ -21,8 +21,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 
 import redis  # noqa: E402
 
-from aiink.providers.base import ModelProvider, ModelResponse  # noqa: E402
-from aiink.config import settings  # noqa: E402
+from myink.providers.base import ModelProvider, ModelResponse  # noqa: E402
+from myink.config import settings  # noqa: E402
 
 _R = redis.from_url(settings.redis_url, decode_responses=True)
 
@@ -102,15 +102,15 @@ class StubProvider(ModelProvider):
 
 
 def _main() -> None:
-    import aiink.providers as providers_mod
-    import aiink.memory.recall as recall_mod
-    import aiink.workflow.nodes as nodes_mod
+    import myink.providers as providers_mod
+    import myink.memory.recall as recall_mod
+    import myink.workflow.nodes as nodes_mod
 
     providers_mod.default_provider = StubProvider("金丹", "金丹", slow=0.8)
     nodes_mod.get_embedder = lambda: FakeEmbedder()
     recall_mod.get_embedder = lambda: FakeEmbedder()
 
-    from aiink.worker.consumer import run
+    from myink.worker.consumer import run
 
     run()
 

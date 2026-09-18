@@ -29,7 +29,7 @@ export function AppVersionGuard() {
       if (checking || stopped) return
       checking = true
       try {
-        const response = await fetch(`/?_aiink_version=${Date.now()}`, {
+        const response = await fetch(`/?_myink_version=${Date.now()}`, {
           cache: 'no-store',
           credentials: 'same-origin',
         })

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.memory import repository as repo
-from aiink.memory.recall import build_context
-from aiink.models import Character, CharacterState
-from aiink.workflow.prompts import _render_entity
+from myink.db import tenant_session
+from myink.memory import repository as repo
+from myink.memory.recall import build_context
+from myink.models import Character, CharacterState
+from myink.workflow.prompts import _render_entity
 
 
 def _seed_state(pid: str, cid: uuid.UUID, seq: int, *, field: str = "realm",

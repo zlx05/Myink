@@ -2,9 +2,9 @@
 import argparse
 import json
 from pathlib import Path
-from aiink.providers.deepseek import DeepSeekProvider
-from aiink.workflow import prompts
-from aiink.workflow.nodes import _parse_json
+from myink.providers.deepseek import DeepSeekProvider
+from myink.workflow import prompts
+from myink.workflow.nodes import _parse_json
 
 p=argparse.ArgumentParser();p.add_argument('--live',action='store_true',required=True);a=p.parse_args()
 cases=[

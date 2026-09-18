@@ -13,13 +13,13 @@ from __future__ import annotations
 
 import uuid
 
-from aiink.db import tenant_session
-from aiink.memory import repository as repo
-from aiink.memory.invalidation import invalidate_chapter_memory
-from aiink.memory.recall import build_context
-from aiink.memory.vector_store import PgvectorStore
-from aiink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, Relation
-from aiink.workflow import nodes
+from myink.db import tenant_session
+from myink.memory import repository as repo
+from myink.memory.invalidation import invalidate_chapter_memory
+from myink.memory.recall import build_context
+from myink.memory.vector_store import PgvectorStore
+from myink.models import CharacterState, EmbeddingRow, Event, Fact, Foreshadow, Relation
+from myink.workflow import nodes
 
 CID, CID2 = uuid.uuid4(), uuid.uuid4()
 ZERO_VEC = [0.0] * 1024
@@ -234,7 +234,7 @@ def test_confirm_candidate_sequence_does_not_lose_prior(temp_project, fake_embed
 
 def test_reapply_pool_for_rewrite_preserves_confirmed_excludes_rejected(temp_project):
     """重写续跑池重放：补已确认候选、排除已拒绝候选、pending 不动。"""
-    from aiink.models import MemoryCandidate
+    from myink.models import MemoryCandidate
 
     def _pool(kind: str, payload: dict, status: str) -> None:
         with tenant_session(temp_project) as db:
@@ -303,7 +303,7 @@ def test_recall_after_invalidate_no_stale_keeps_other(temp_project, fake_embedde
 
 def test_vector_store_delete_by_chapter(temp_project):
     """按 source_chapter 删除向量，rowcount 正确、只删该章。"""
-    from aiink.models import EmbeddingRow
+    from myink.models import EmbeddingRow
 
     with tenant_session(temp_project) as db:
         for seq, s_id in ((5, uuid.uuid4()), (6, uuid.uuid4())):

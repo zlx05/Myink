@@ -20,17 +20,17 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from aiink.api.main import app
-from aiink.db import new_session
-from aiink.integrations import fetch_rankings as facade_fetch_rankings
-from aiink.integrations.mcp import McpClient, McpError
-from aiink.integrations.rankings import (
+from myink.api.main import app
+from myink.db import new_session
+from myink.integrations import fetch_rankings as facade_fetch_rankings
+from myink.integrations.mcp import McpClient, McpError
+from myink.integrations.rankings import (
     RankingsService,
     _SAMPLE_ITEMS,
     _find_tool,
     sanitize,
 )
-from aiink.models import User
+from myink.models import User
 
 client = TestClient(app)
 
@@ -369,7 +369,7 @@ def test_service_no_valid_items_degrades_to_sample():
 def test_facade_fetch_rankings_shape(monkeypatch):
     fake = FakeClient(["qidian_rank"], json.dumps([{"rank": 1, "title": "甲"}]))
     svc, st, _ = _service(fake)
-    monkeypatch.setattr("aiink.integrations.rankings._service", svc)
+    monkeypatch.setattr("myink.integrations.rankings._service", svc)
     result = asyncio.run(facade_fetch_rankings())
     assert set(result) == {"source", "tool", "fetched_at", "error", "items"}
     assert result["source"] == "remote"
@@ -382,13 +382,13 @@ def test_facade_fetch_rankings_shape(monkeypatch):
 def _demo_user_id() -> uuid.UUID:
     with new_session() as db:
         u = db.query(User).filter(User.username == "demo").first()
-        assert u is not None, "请先运行 `aiink init`（demo 用户未建）"
+        assert u is not None, "请先运行 `myink init`（demo 用户未建）"
         return u.id
 
 
 def _h(uid: str | uuid.UUID | None) -> dict:
-    """请求头：X-AiInk-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
-    return {"X-AiInk-User": str(uid)} if uid is not None else {}
+    """请求头：X-Myink-User = 网关已验证的 JWT sub（None → 不带，测 fail closed）。"""
+    return {"X-Myink-User": str(uid)} if uid is not None else {}
 
 
 def test_rankings_endpoint_200_shape(monkeypatch):
@@ -397,7 +397,7 @@ def test_rankings_endpoint_200_shape(monkeypatch):
                 "fetched_at": "2026-01-01T00:00:00+00:00", "error": None,
                 "items": [{"rank": 1, "title": "甲", "author": "张", "tags": ["仙侠"], "hot": "1.2万"}]}
 
-    monkeypatch.setattr("aiink.api.routes_rankings.fetch_rankings", fake)
+    monkeypatch.setattr("myink.api.routes_rankings.fetch_rankings", fake)
     resp = client.get("/internal/v1/rankings", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     body = resp.json()
@@ -412,7 +412,7 @@ def test_rankings_endpoint_refresh_param_passed(monkeypatch):
         seen.append(refresh)
         return {"source": "sample", "tool": "", "fetched_at": None, "error": "已禁用", "items": []}
 
-    monkeypatch.setattr("aiink.api.routes_rankings.fetch_rankings", fake)
+    monkeypatch.setattr("myink.api.routes_rankings.fetch_rankings", fake)
     resp = client.get("/internal/v1/rankings?refresh=true", headers=_h(_demo_user_id()))
     assert resp.status_code == 200
     assert seen == [True]

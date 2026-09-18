@@ -1,5 +1,5 @@
-# Ai Ink CI：PR / 主分支门禁（格式检查 + 全量回归 + 镜像构建，plan.md §阶段 5 余项「CI」）。
-# 四个 job 并行：python（全新 PG + Redis + RabbitMQ 服务容器，测前 aiink init）/ go（网关 vet+test）/ frontend / build-images。
+# Myink CI：PR / 主分支门禁（格式检查 + 全量回归 + 镜像构建，plan.md §阶段 5 余项「CI」）。
+# 四个 job 并行：python（全新 PG + Redis + RabbitMQ 服务容器，测前 myink init）/ go（网关 vet+test）/ frontend / build-images。
 # 关键设计：Python 测试用「全新 PG」服务容器——刚修过的部署 bug（索引名冲突 / schema CREATE 权限）
 # 都是全新库才暴露的类型，CI 用 fresh 库跑全量回归就是那道闸；EMBED_ENABLED=0 不装 ml extras（torch）。
 # 无 git remote 时本地等价验证：bash scripts/ci-local.sh（同一套门禁，见 docs/DEPLOY.md）。
@@ -25,18 +25,18 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EMBED_ENABLED: "0"
-      AMQP_URL: amqp://aiink:aiink@localhost:5672/
+      AMQP_URL: amqp://myink:myink@localhost:5672/
     services:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: aiink
-          POSTGRES_PASSWORD: aiink
-          POSTGRES_DB: aiink
+          POSTGRES_USER: myink
+          POSTGRES_PASSWORD: myink
+          POSTGRES_DB: myink
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U aiink -d aiink"
+          --health-cmd "pg_isready -U myink -d myink"
           --health-interval 3s
           --health-timeout 3s
           --health-retries 30
@@ -52,8 +52,8 @@ jobs:
       rabbitmq:
         image: rabbitmq:3.13-management
         env:
-          RABBITMQ_DEFAULT_USER: aiink
-          RABBITMQ_DEFAULT_PASS: aiink
+          RABBITMQ_DEFAULT_USER: myink
+          RABBITMQ_DEFAULT_PASS: myink
         ports:
           - 5672:5672
         options: >-
@@ -72,13 +72,13 @@ jobs:
         run: python -m compileall -q src tests
       - name: 创建测试业务角色（checkout 后执行，避免 service 提前挂载空目录）
         env:
-          PGPASSWORD: aiink
-        run: psql -h localhost -U aiink -d aiink -v ON_ERROR_STOP=1 -f docker/initdb/01-roles.sql
+          PGPASSWORD: myink
+        run: psql -h localhost -U myink -d myink -v ON_ERROR_STOP=1 -f docker/initdb/01-roles.sql
       - name: 初始化（建表 + RLS + seed，幂等）
-        run: aiink init
+        run: myink init
       - name: 契约导出 + diff 闸（改响应模型未重新导出 spec 即红）
         run: |
-          aiink contract export
+          myink contract export
           git diff --exit-code -- spec/api-openapi.json
       - name: 全量回归（LLM/embedding 使用替身）
         run: python -m pytest tests/ -q
@@ -89,7 +89,7 @@ jobs:
     name: Go 网关（vet + 单测）
     runs-on: ubuntu-latest
     env:
-      AMQP_URL: amqp://aiink:aiink@localhost:5672/
+      AMQP_URL: amqp://myink:myink@localhost:5672/
     services:
       redis:
         image: redis:7-alpine
@@ -103,8 +103,8 @@ jobs:
       rabbitmq:
         image: rabbitmq:3.13-management
         env:
-          RABBITMQ_DEFAULT_USER: aiink
-          RABBITMQ_DEFAULT_PASS: aiink
+          RABBITMQ_DEFAULT_USER: myink
+          RABBITMQ_DEFAULT_PASS: myink
         ports:
           - 5672:5672
         options: >-
@@ -163,6 +163,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Python 镜像（api/worker 共用，核心依赖）
-        run: docker build -f Dockerfile -t aiink-api:ci .
+        run: docker build -f Dockerfile -t myink-api:ci .
       - name: 网关镜像（node 构建 dist + go 静态编译 → slim）
-        run: docker build -f gateway/Dockerfile -t aiink-gateway:ci .
+        run: docker build -f gateway/Dockerfile -t myink-gateway:ci .

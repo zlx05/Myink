@@ -1,7 +1,7 @@
 // 网关 HTTP 层测试（httptest 直打 router）：建章/建批次、闸门拒绝、转发、SSE、探针。
 // 活 Redis :6380 + RabbitMQ :5672（入队断言走 -h-t- 观察队列）；Python API 用内存
 // httptest 假服务替代（测转发，不依赖 8100）。
-// 对 compose 起的 aiink-rabbitmq 需 AMQP_URL=amqp://aiink:aiink@localhost:5672/ 否则 dial 403 静默 skip。
+// 对 compose 起的 myink-rabbitmq 需 AMQP_URL=amqp://myink:myink@localhost:5672/ 否则 dial 403 静默 skip。
 package handlers
 
 import (
@@ -21,10 +21,10 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	amqp091 "github.com/rabbitmq/amqp091-go"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/pyapi"
-	"aiink/gateway/internal/queue"
-	"aiink/gateway/internal/redis"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/pyapi"
+	"myink/gateway/internal/queue"
+	"myink/gateway/internal/redis"
 )
 
 const testQueuePrefix = "-h-t-" // RabbitMQ 拓扑隔离：不碰运行中网关/worker 的真实队列
@@ -43,7 +43,7 @@ func bearerTier(t *testing.T, sub, tier string) string {
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":  sub,
 		"tier": tier,
-		"iss":  "aiink",
+		"iss":  "myink",
 		"exp":  time.Now().Add(time.Hour).Unix(),
 	})
 	s, err := tok.SignedString([]byte(config.Load().JWTSecret))
@@ -70,7 +70,7 @@ func newTestRMQ(t *testing.T, cfg config.Config) *queue.AMQP {
 	t.Helper()
 	conn, err := amqp091.Dial(cfg.AmqpURL)
 	if err != nil {
-		t.Skipf("aiink-rabbitmq 不可达 %s: %v", cfg.AmqpURL, err)
+		t.Skipf("myink-rabbitmq 不可达 %s: %v", cfg.AmqpURL, err)
 	}
 	_ = conn.Close()
 	rmq, err := queue.DialAMQP(cfg)
@@ -149,7 +149,7 @@ func newTestRedis(t *testing.T) *redis.Client {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	if err := r.Ping(ctx); err != nil {
-		t.Skipf("aiink-redis 不可达: %v", err)
+		t.Skipf("myink-redis 不可达: %v", err)
 	}
 	return r
 }
@@ -1077,7 +1077,7 @@ func TestSSEStreamExpiredReturns410(t *testing.T) {
 	}
 }
 
-// ---- JWT 身份断言（§14.1 ③：网关验签第一道门，替换 X-AiInk-User 占位）----
+// ---- JWT 身份断言（§14.1 ③：网关验签第一道门，替换 X-Myink-User 占位）----
 
 func TestAuthTokenForwardsToPython(t *testing.T) {
 	// 签发端点不挂 JWT（否则无法登录）：转发 Python /internal/v1/auth/token。
@@ -1126,7 +1126,7 @@ func TestJWTRejectsBadToken(t *testing.T) {
 }
 
 func TestJWTGoodTokenSetsTrustedHeader(t *testing.T) {
-	// 验签通过 → 透传 X-AiInk-User = 可信 sub（Python 侧归属断言依赖此头，§14.1 ③）。
+	// 验签通过 → 透传 X-Myink-User = 可信 sub（Python 侧归属断言依赖此头，§14.1 ③）。
 	r := newTestRedis(t)
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
@@ -1139,7 +1139,7 @@ func TestJWTGoodTokenSetsTrustedHeader(t *testing.T) {
 		t.Fatalf("好 token 应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
 	if got := w.Header().Get(HeaderUser); got != "user-123" {
-		t.Fatalf("应透传 X-AiInk-User=user-123，实际 %q", got)
+		t.Fatalf("应透传 X-Myink-User=user-123，实际 %q", got)
 	}
 }
 

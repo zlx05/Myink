@@ -1,4 +1,4 @@
-// Ai Ink 阶段 2 网关：唯一公网入口（鉴权占位 + 限流 + 三层闸门 + SSE + 转发 Python API）。
+// Myink 阶段 2 网关：唯一公网入口（鉴权占位 + 限流 + 三层闸门 + SSE + 转发 Python API）。
 package main
 
 import (
@@ -13,11 +13,11 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"aiink/gateway/internal/config"
-	"aiink/gateway/internal/handlers"
-	"aiink/gateway/internal/pyapi"
-	"aiink/gateway/internal/queue"
-	"aiink/gateway/internal/redis"
+	"myink/gateway/internal/config"
+	"myink/gateway/internal/handlers"
+	"myink/gateway/internal/pyapi"
+	"myink/gateway/internal/queue"
+	"myink/gateway/internal/redis"
 )
 
 // loadDotEnv 从当前工作目录向上逐级找项目根 .env（与 Python config.py 同一文件，

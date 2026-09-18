@@ -241,7 +241,7 @@ it('ignores a late chapter list from the previous book after switching projects'
 })
 
 it('reconnects from the remembered write when the worker has not persisted the task yet', async () => {
-  sessionStorage.setItem('aiink.activeWrite.project-a', JSON.stringify({
+  sessionStorage.setItem('myink.activeWrite.project-a', JSON.stringify({
     taskId: 'task-2', chapterSeq: 2, batchTotal: null,
   }))
   vi.mocked(api.listProjects).mockResolvedValue([])

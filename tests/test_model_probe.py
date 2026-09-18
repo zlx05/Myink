@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import httpx
 
-from aiink.providers import probe
+from myink.providers import probe
 
 
 def _patch_client(monkeypatch, handler):

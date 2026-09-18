@@ -1,0 +1,41 @@
+"""Pydantic 契约模型（spec/schema.md 12 个 Schema 的代码映射）。"""
+
+from myink.schemas.contract import (
+    AuditVerdict,
+    ChapterCast,
+    ChapterPlan,
+    Character,
+    CharacterPresence,
+    CharacterState,
+    Event,
+    EvidenceItem,
+    Fact,
+    Finding,
+    Foreshadow,
+    MutationCandidate,
+    PlotThread,
+    Relation,
+    RetrievedContext,
+    Scene,
+    ValidationReport,
+)
+
+__all__ = [
+    "CharacterState",
+    "Character",
+    "Scene",
+    "CharacterPresence",
+    "ChapterCast",
+    "ChapterPlan",
+    "Event",
+    "Fact",
+    "Relation",
+    "Foreshadow",
+    "PlotThread",
+    "EvidenceItem",
+    "Finding",
+    "MutationCandidate",
+    "ValidationReport",
+    "AuditVerdict",
+    "RetrievedContext",
+]

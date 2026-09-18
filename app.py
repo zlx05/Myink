@@ -1,4 +1,4 @@
-"""Ai Ink 阶段 2 展示前端（Streamlit）。
+"""Myink 阶段 2 展示前端（Streamlit）。
 
 用法：
     streamlit run app.py
@@ -6,7 +6,7 @@
 生成链路走网关 HTTP（异步：网关三层闸门 → Redis 队列 → worker → PG），
 前端轮询任务详情到终态；展示辅助（章节库/流转图/成本时间线）直连 DB 复用
 阶段 1 资产。多本书侧边栏切换（seed 已补示例书）。数据库未初始化时界面会
-提示先运行 `aiink init`。
+提示先运行 `myink init`。
 """
 
 from __future__ import annotations
@@ -19,11 +19,11 @@ from typing import Any
 import requests
 import streamlit as st
 
-from aiink.config import settings
-from aiink.db import new_session, tenant_session
-from aiink.models import AgentRun, Chapter, Project, Task
+from myink.config import settings
+from myink.db import new_session, tenant_session
+from myink.models import AgentRun, Chapter, Project, Task
 
-st.set_page_config(page_title="Ai Ink · 阶段 2 展示台", layout="wide")
+st.set_page_config(page_title="Myink · 阶段 2 展示台", layout="wide")
 
 # ---- 网关 HTTP 客户端（唯一入口，§17.2：生成走网关异步）----
 _GW = settings.gateway_url.rstrip("/")
@@ -39,7 +39,7 @@ def _fetch_token() -> str:
 
 
 def _auth_headers() -> dict:
-    """带 Bearer 的网关请求头（首次调用惰性拿 token，§14.1 ③ 替换 X-AiInk-User 占位）。"""
+    """带 Bearer 的网关请求头（首次调用惰性拿 token，§14.1 ③ 替换 X-Myink-User 占位）。"""
     global _JWT_TOKEN
     if _JWT_TOKEN is None:
         _JWT_TOKEN = _fetch_token()
@@ -145,7 +145,7 @@ def _submit_task(project_id: str, title: str, seq: int, label: str, *, create: A
     try:
         resp = create()
     except Exception as exc:
-        st.error(f"网关建任务失败：{exc}\n\n请确认网关已启动（`go run ./cmd/gateway`）且 worker 在消费（`aiink-worker`）。")
+        st.error(f"网关建任务失败：{exc}\n\n请确认网关已启动（`go run ./cmd/gateway`）且 worker 在消费（`myink-worker`）。")
         return
     task_id = resp["task_id"]
     t = _TaskStatus(task_id=task_id, project_id=project_id, project_title=title,
@@ -186,16 +186,16 @@ try:
     projects = list_projects()
 except Exception as exc:  # noqa: BLE001 —— 未初始化时提示
     st.error(f"数据库未初始化或不可用：{exc}")
-    st.info("请先在终端运行 `aiink init` 建表 + 写入 demo 种子，再启动本页面。")
+    st.info("请先在终端运行 `myink init` 建表 + 写入 demo 种子，再启动本页面。")
     st.stop()
 
 if not projects:
-    st.error("没有可用项目。请先运行 `aiink init`（会创建《九州问天》demo 项目）。")
+    st.error("没有可用项目。请先运行 `myink init`（会创建《九州问天》demo 项目）。")
     st.stop()
 
 project_labels = {f"{p.title} · {str(p.id)[:8]}": p for p in projects}
 with st.sidebar:
-    st.title("Ai Ink · 阶段 2 展示台")
+    st.title("Myink · 阶段 2 展示台")
     label = st.selectbox("作品（多本书）", list(project_labels.keys()))
     project = project_labels[label]
     pid = str(project.id)
@@ -333,7 +333,7 @@ def _chapter_run_task_ids(pid: str, chapter_seq: int) -> list[str]:
     """
     ids: list[str] = []
     with tenant_session(pid) as db:
-        from aiink.models import Task
+        from myink.models import Task
 
         # 单章任务：task_id = 任务 id（tasks.chapter_seq 精确匹配）
         for t in db.query(Task).filter(Task.chapter_seq == chapter_seq,
@@ -419,7 +419,7 @@ def _build_trace_steps(pid: str, chapter_seq: int, chapter_status: str | None = 
     if not ids:
         return None
     with new_session() as db:
-        from aiink.models import AgentRun
+        from myink.models import AgentRun
 
         runs = (db.query(AgentRun)
                 .filter(AgentRun.project_id == pid, AgentRun.task_id.in_(ids))

@@ -1,6 +1,6 @@
 // Package handlers 网关 HTTP 层（阶段 2，唯一公网入口）。
-// 身份阶段 3：JWT 验证（§14.1 ③ 归属校验双保险第一道门，替换阶段 2 X-AiInk-User 占位）。
-// 网关验签 → 解出可信 sub(user_id) → 写入上下文 + 透传 X-AiInk-User 头给 Python API
+// 身份阶段 3：JWT 验证（§14.1 ③ 归属校验双保险第一道门，替换阶段 2 X-Myink-User 占位）。
+// 网关验签 → 解出可信 sub(user_id) → 写入上下文 + 透传 X-Myink-User 头给 Python API
 // （Python 侧 require_owner 断言 project.user_id == 该身份，RLS 之外第二道门，见 api/auth.py）。
 package handlers
 
@@ -12,10 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 
-	"aiink/gateway/internal/trace"
+	"myink/gateway/internal/trace"
 )
 
-const HeaderUser = "X-AiInk-User"
+const HeaderUser = "X-Myink-User"
 
 // AuthError 是 JWT 校验失败（缺/坏 token）的错误，调用方转 401。
 type AuthError struct{ msg string }
@@ -30,7 +30,7 @@ var (
 )
 
 // JWTMiddleware 要求 `Authorization: Bearer <jwt>`，验签（HS256，secret 与 Python 共享
-// .env）后把可信 sub(user_id) 写入 context 并透传 X-AiInk-User 响应头。
+// .env）后把可信 sub(user_id) 写入 context 并透传 X-Myink-User 响应头。
 // 缺/坏 token → 401：网关是唯一公网入口，身份头从此只在网关内部写入，外部不可伪造
 // （否则 Python 侧归属断言可被绕过，§14.1 ③）。
 func JWTMiddleware(secret []byte) gin.HandlerFunc {
