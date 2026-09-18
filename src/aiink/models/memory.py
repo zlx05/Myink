@@ -69,11 +69,10 @@ class Fact(Base, UUIDPkMixin, TimestampMixin):
     confirm_status: Mapped[str] = mapped_column(String(16), default="pending", nullable=False)
     valid_from: Mapped[int | None] = mapped_column(Integer, default=1)
     valid_to: Mapped[int | None] = mapped_column(Integer)
-    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class Event(Base, UUIDPkMixin, TimestampMixin):
-    """剧情事件（中期记忆，§7.4，promoted_to_fact 升格）。"""
+    """剧情事件（中期记忆，§7.4）。"""
 
     __tablename__ = "events"
     __table_args__ = (
@@ -87,13 +86,8 @@ class Event(Base, UUIDPkMixin, TimestampMixin):
     )
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     participants: Mapped[list] = mapped_column(JSON, default=list, nullable=False, comment="归一化 canonical id")
-    location_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
-    timeline: Mapped[str | None] = mapped_column(String(128), comment="剧情内时间")
-    related_threads: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     source_chapter: Mapped[int] = mapped_column(Integer, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
-    promoted_to_fact: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class Relation(Base, UUIDPkMixin, TimestampMixin):
@@ -118,7 +112,6 @@ class Relation(Base, UUIDPkMixin, TimestampMixin):
     properties: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     confidence: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     source_chapter: Mapped[int] = mapped_column(Integer, nullable=False)
-    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     valid_from: Mapped[int | None] = mapped_column(Integer, default=1)
     valid_to: Mapped[int | None] = mapped_column(Integer)
 
@@ -134,7 +127,6 @@ class Entity(Base, UUIDPkMixin, TimestampMixin):
     entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
     canonical_name: Mapped[str] = mapped_column(String(128), nullable=False)
     properties: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
 
 class Alias(Base, UUIDPkMixin, TimestampMixin):
@@ -165,7 +157,6 @@ class Foreshadow(Base, UUIDPkMixin, TimestampMixin):
     planted_chapter: Mapped[int] = mapped_column(Integer, nullable=False)
     resolved_chapter: Mapped[int | None] = mapped_column(Integer)
     trigger: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False, comment="回收条件：触发者+动作+对象")
-    related_entities: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     last_touched: Mapped[int | None] = mapped_column(Integer, comment="最近推进章节（回收压力）")
 
 
@@ -185,10 +176,7 @@ class PlotThread(Base, UUIDPkMixin, TimestampMixin):
     kind: Mapped[str] = mapped_column(String(8), nullable=False)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     priority: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    progress: Mapped[str | None] = mapped_column(Text)
-    participants: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     last_progress_chapter: Mapped[int | None] = mapped_column(Integer)
-    open_duration: Mapped[int | None] = mapped_column(Integer, comment="开放未推进时长（章）")
 
 
 class MemoryCandidate(Base, UUIDPkMixin, TimestampMixin):
@@ -212,7 +200,10 @@ class MemoryCandidate(Base, UUIDPkMixin, TimestampMixin):
 
 
 class EmbeddingRow(Base, UUIDPkMixin, TimestampMixin):
-    """向量对象（pgvector，分层：世界观/事件/章节，§11.1）。"""
+    """向量对象（pgvector，分层：世界观/事件，§11.1）。
+
+    level 只有 world（软事实）与 event（事件）两个写入者——硬约束恒在 Top-K 不向量化（§7.2）。
+    """
 
     __tablename__ = "embeddings"
     __table_args__ = (
@@ -230,7 +221,7 @@ class EmbeddingRow(Base, UUIDPkMixin, TimestampMixin):
     project_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    level: Mapped[str] = mapped_column(String(16), nullable=False, comment="world/event/chapter")
+    level: Mapped[str] = mapped_column(String(16), nullable=False, comment="world/event")
     source_id: Mapped[uuid.UUID] = mapped_column(Uuid, nullable=False, comment="来源对象 id")
     source_chapter: Mapped[int | None] = mapped_column(Integer)
     model_version: Mapped[str] = mapped_column(String(64), nullable=False)

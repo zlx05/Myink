@@ -412,7 +412,6 @@ export default function LorePage() {
                   <li key={e.id} className={styles.entityItem}>
                     <span className={styles.entityHead}>
                       <span className={styles.entityName}>第 {e.source_chapter} 章</span>
-                      {e.promoted_to_fact && <span className="badge badge-accent">已入事实</span>}
                       {e.participants.length > 0 && (
                         <span className={styles.entityDesc}>{e.participants.join('、')}</span>
                       )}

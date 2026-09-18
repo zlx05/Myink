@@ -304,8 +304,33 @@ def ensure_legacy_schema_cleanup() -> None:
     无副作用，连跑两次 init 也不报错。
 
     清的都是「没有主人的契约」：无写入者、无读取者，却仍出现在表结构里误导后来的人。
+    唯一例外是 `plot_threads.open_duration`（代码用 last_progress_chapter 现算）和
+    `events.promoted_to_fact`（曾被前端渲染成「已入事实」徽章，值恒 false）——它们有
+    读取者，读到的却永远是假值，比没有更坏。
     """
+    dropped_columns = (
+        # 别名有活着的替身：aliases 表（名字 → canonical id 归一化，repository.get_character）
+        ("characters", "aliases"),
+        ("factions", "members"),
+        ("facts", "version"),
+        ("events", "location_id"),
+        ("events", "timeline"),
+        ("events", "related_threads"),
+        ("events", "promoted_to_fact"),
+        ("events", "version"),
+        ("relations", "version"),
+        ("entities", "version"),
+        ("foreshadows", "related_entities"),
+        ("plot_threads", "progress"),
+        ("plot_threads", "participants"),
+        ("plot_threads", "open_duration"),
+        # 乐观锁的真身是 chapters.version（routes_chapters 的 409）与 project_settings.version，
+        # 上面这些实体版本号从来没有写入者，删它们不影响那两处
+        ("characters", "version"),
+    )
     with _admin_engine.begin() as conn:
         # 章节计划表：0 行、生产代码零写入。计划的事实来源是 agent_runs.detail
         # （node=="plan_chapter"）+ LangGraph state，留这张表只会让人以为计划存在关系库里。
         conn.execute(text("DROP TABLE IF EXISTS chapter_outlines"))
+        for table, column in dropped_columns:
+            conn.execute(text(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {column}"))

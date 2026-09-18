@@ -263,7 +263,7 @@ def _render_foreshadow(item: dict) -> str:
 
 def _render_thread(item: dict) -> str:
     return (f"- [{item.get('kind')}] {item.get('name')} ({item.get('status')}, "
-            f"最近推进第 {item.get('last_progress_chapter') or '?'} 章, 进度: {item.get('progress') or '—'})")
+            f"最近推进第 {item.get('last_progress_chapter') or '?'} 章)")
 
 
 def _render_lesson(item: dict) -> str:

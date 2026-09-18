@@ -379,7 +379,6 @@ def put_setup(project_id: str, body: SetupBody) -> dict:
                     project_id=pid, name=name,
                     stance=_str_or_none(f.get("stance")),
                     resources=[str(x) for x in (f.get("resources") or [])],
-                    members=[str(x) for x in (f.get("members") or [])],
                 ))
         for loc in body.locations or []:
             name = str(loc.get("name") or "").strip()
@@ -497,7 +496,7 @@ def character_cards(project_id: str) -> list[dict]:
             cards.append({
                 "id": str(ch.id), "name": ch.name, "race": ch.race, "origin": ch.origin,
                 "realm_cap": ch.realm_cap, "personality": ch.personality,
-                "aliases": ch.aliases or [], "base_attrs": ch.base_attrs or {},
+                "base_attrs": ch.base_attrs or {},
                 "state": state,
             })
     return cards
@@ -528,11 +527,8 @@ def story_events(project_id: str, from_chapter: int | None = None,
                 "id": str(e.id),
                 "summary": e.summary or "",
                 "participants": [names[m] for m in (e.participants or []) if m in names],
-                "location_id": str(e.location_id) if e.location_id else None,
-                "timeline": e.timeline,
                 "source_chapter": e.source_chapter,
                 "confidence": e.confidence,
-                "promoted_to_fact": bool(e.promoted_to_fact),
             }
             for e in rows
         ]
@@ -642,7 +638,6 @@ def foreshadow_ledger(project_id: str) -> list[dict]:
                 "planted_chapter": f.planted_chapter,
                 "resolved_chapter": f.resolved_chapter,
                 "trigger": f.trigger or {},
-                "related_entities": f.related_entities or [],
             }
             for f in rows
         ]

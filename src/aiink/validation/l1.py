@@ -88,10 +88,8 @@ def _has_callback_marker(text: str | None) -> bool:
 
 
 def _names_present(draft: str, ch: object) -> bool:
-    """角色名或任一别名精确子串出现于 draft（样例 2 双名共现判据）。"""
-    if ch.name in draft:
-        return True
-    return bool(getattr(ch, "aliases", None)) and any(a in draft for a in ch.aliases)
+    """角色名精确子串出现于 draft（样例 2 双名共现判据）。"""
+    return ch.name in draft
 
 
 def _temp_alliance_covers(session: Session, project_id: uuid.UUID,

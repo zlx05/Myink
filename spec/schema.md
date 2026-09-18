@@ -51,18 +51,17 @@
   "properties": {
     "project_id":     { "type": "string", "format": "uuid" },
     "name":           { "type": "string" },
-    "aliases":        { "type": "array", "items": { "type": "string" } },
     "race":           { "type": "string" },
     "origin":         { "type": "string", "description": "出身" },
     "realm_cap":      { "type": "string", "description": "境界上限（战力硬约束）" },
     "personality":    { "type": "string", "description": "性格基调/目标（人设漂移审计基线，plan.md §8.6）" },
-    "base_attrs":     { "type": "object", "description": "JSONB 基础属性" },
-    "version":        { "type": "integer", "description": "乐观版本号（plan.md §7.6）" }
+    "base_attrs":     { "type": "object", "description": "JSONB 基础属性" }
   }
 }
 ```
 
 - 只存**不易变**信息；易变状态一律进 `character_states`（plan.md §7.7）。
+- 别名不在本表：`aliases` 表（`alias` → `entity_id`）是唯一的归一化来源（plan.md §7.5）。
 
 ## 3. ChapterPlan — 章节计划（规划 agent 输出）
 
@@ -131,13 +130,8 @@
     "project_id":      { "type": "string", "format": "uuid" },
     "summary":         { "type": "string" },
     "participants":    { "type": "array", "items": { "type": "string", "format": "uuid" }, "description": "必须归一为 canonical id（plan.md §7.5）" },
-    "location_id":     { "type": "string", "format": "uuid" },
-    "timeline":        { "type": "string", "description": "剧情内时间（相对/绝对）" },
-    "related_threads": { "type": "array", "items": { "type": "string", "format": "uuid" }, "description": "关联剧情线" },
     "source_chapter":  { "type": "integer", "minimum": 1 },
-    "confidence":      { "type": "number", "minimum": 0, "maximum": 1 },
-    "promoted_to_fact":{ "type": "boolean", "default": false, "description": "事件→事实升格（plan.md §7.3）" },
-    "version":         { "type": "integer" }
+    "confidence":      { "type": "number", "minimum": 0, "maximum": 1 }
   }
 }
 ```
@@ -160,8 +154,7 @@
     "confidence":      { "type": "number", "minimum": 0, "maximum": 1 },
     "confirm_status":  { "type": "string", "enum": ["pending","confirmed","rejected","expired"] },
     "valid_from":      { "type": "integer", "minimum": 1 },
-    "valid_to":        { "type": ["integer","null"], "minimum": 1 },
-    "version":         { "type": "integer" }
+    "valid_to":        { "type": ["integer","null"], "minimum": 1 }
   }
 }
 ```
@@ -183,7 +176,6 @@
     "properties":     { "type": "object", "description": "强度/条件" },
     "confidence":     { "type": "number", "minimum": 0, "maximum": 1 },
     "source_chapter": { "type": "integer", "minimum": 1 },
-    "version":        { "type": "integer" },
     "valid_from":     { "type": "integer", "minimum": 1 },
     "valid_to":       { "type": ["integer","null"], "minimum": 1 }
   }
@@ -200,7 +192,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Foreshadow",
   "type": "object",
-  "required": ["project_id", "description", "status", "planted_chapter", "trigger", "related_entities"],
+  "required": ["project_id", "description", "status", "planted_chapter", "trigger"],
   "properties": {
     "id":               { "type": "string", "format": "uuid" },
     "project_id":       { "type": "string", "format": "uuid" },
@@ -209,7 +201,6 @@
     "planted_chapter":  { "type": "integer", "minimum": 1 },
     "resolved_chapter": { "type": ["integer","null"], "minimum": 1 },
     "trigger":          { "type": "object", "description": "回收条件（结构化）：触发者 + 动作（获得/知道/遭遇）+ 对象（plan.md §7.9）" },
-    "related_entities": { "type": "array", "items": { "type": "string", "format": "uuid" } },
     "last_touched":     { "type": "integer", "minimum": 1, "description": "最近推进章节（回收压力计算）" }
   }
 }
@@ -230,13 +221,12 @@
     "kind":            { "type": "string", "enum": ["main","side"] },
     "status":          { "type": "string", "enum": ["active","stalled","closed"] },
     "priority":        { "type": "integer", "minimum": 1, "description": "线程债务治理，plan.md §8.6" },
-    "progress":        { "type": "string" },
-    "participants":    { "type": "array", "items": { "type": "string", "format": "uuid" } },
-    "last_progress_chapter": { "type": "integer", "minimum": 1 },
-    "open_duration":   { "type": "integer", "description": "开放未推进时长（章节数）" }
+    "last_progress_chapter": { "type": "integer", "minimum": 1 }
   }
 }
 ```
+
+- 闲置时长是**派生量**：由 `last_progress_chapter` 与当前章现算，不落列（`open_duration` 已删）。
 
 ## 9. Finding — 校验发现（L1/L2 统一）
 

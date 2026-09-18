@@ -101,7 +101,7 @@ def _inspect_foreshadows(db: Session, project_id: uuid.UUID, args: dict) -> dict
 def _inspect_plot_threads(db: Session, project_id: uuid.UUID, args: dict) -> dict:
     rows = repo.get_plot_threads(db, project_id)
     return {"count": len(rows[: _MAX_ROWS]), "threads": [
-        {"name": t.name, "kind": t.kind, "status": t.status, "progress": t.progress,
+        {"name": t.name, "kind": t.kind, "status": t.status,
          "last_progress_chapter": t.last_progress_chapter} for t in rows[: _MAX_ROWS]
     ]}
 

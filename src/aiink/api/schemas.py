@@ -354,7 +354,6 @@ class CharacterCardOut(BaseModel):
     origin: str | None = None
     realm_cap: str
     personality: str | None = None
-    aliases: list = Field(default_factory=list)
     base_attrs: dict = Field(default_factory=dict)
     state: dict = Field(default_factory=dict)
 
@@ -408,7 +407,6 @@ class ForeshadowOut(BaseModel):
     planted_chapter: int
     resolved_chapter: int | None = None
     trigger: dict = Field(default_factory=dict)
-    related_entities: list = Field(default_factory=list)
 
 
 class StoryEventOut(BaseModel):
@@ -419,11 +417,8 @@ class StoryEventOut(BaseModel):
     # participants 落库是 canonical 人物 UUID 字符串（nodes.py §7.5），读出前翻成人名——
     # 裸 uuid 对前端不可读；已删角色丢弃。
     participants: list = Field(default_factory=list)
-    location_id: str | None = None
-    timeline: str | None = None
     source_chapter: int
     confidence: float
-    promoted_to_fact: bool
 
 
 class CharacterStateChangeOut(BaseModel):

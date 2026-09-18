@@ -289,7 +289,7 @@ def test_put_setup_persists_and_upserts_by_name(temp_project):
     assert cards.status_code == 200
     assert cards.json() == [{
         "id": cards.json()[0]["id"], "name": "林砚", "race": "人族", "origin": None,
-        "realm_cap": "金丹", "personality": None, "aliases": [], "base_attrs": {}, "state": {},
+        "realm_cap": "金丹", "personality": None, "base_attrs": {}, "state": {},
     }]
 
     # 第二次确认：同名 + 新增一个角色（realm_cap 缺省）→ 不重复建行

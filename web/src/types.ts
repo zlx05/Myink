@@ -600,7 +600,6 @@ export interface CharacterCard {
   origin: string | null
   realm_cap: string
   personality: string | null
-  aliases: unknown[]
   base_attrs: Record<string, unknown>
   state: Record<string, string>
 }
@@ -620,11 +619,8 @@ export interface StoryEvent {
   id: string
   summary: string
   participants: string[]
-  location_id: string | null
-  timeline: string | null
   source_chapter: number
   confidence: number
-  promoted_to_fact: boolean
 }
 
 /** 人物状态台账变更单条（§7.7 追加式：old_value → new_value @ 第 N 章）。
@@ -687,7 +683,6 @@ export interface Foreshadow {
   planted_chapter: number
   resolved_chapter: number | null
   trigger: Record<string, unknown>
-  related_entities: unknown[]
 }
 
 /** 扫榜响应（GET /rankings → Python RankingsOut，§10）。

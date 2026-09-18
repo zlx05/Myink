@@ -122,7 +122,7 @@ def fake_embedder(monkeypatch):
 
 def _seed_character(pid: str, name: str, realm_cap: str = "金丹", personality: str = "谨慎隐忍") -> uuid.UUID:
     with tenant_session(pid) as db:
-        ch = Character(project_id=uuid.UUID(pid), name=name, aliases=[], race="人族",
+        ch = Character(project_id=uuid.UUID(pid), name=name, race="人族",
                        origin="test", realm_cap=realm_cap, personality=personality, base_attrs={})
         db.add(ch)
         db.flush()

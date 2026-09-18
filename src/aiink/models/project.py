@@ -75,13 +75,11 @@ class Character(Base, UUIDPkMixin, TimestampMixin):
         Uuid, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String(64), nullable=False)
-    aliases: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     race: Mapped[str | None] = mapped_column(String(64))
     origin: Mapped[str | None] = mapped_column(String(255), comment="出身")
     realm_cap: Mapped[str] = mapped_column(String(64), nullable=False, comment="境界上限（战力硬约束）")
     personality: Mapped[str | None] = mapped_column(Text, comment="性格基调（人设漂移审计基线 §8.6）")
     base_attrs: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
-    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False, comment="乐观版本号")
 
 
 class Faction(Base, UUIDPkMixin, TimestampMixin):
@@ -93,7 +91,6 @@ class Faction(Base, UUIDPkMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     stance: Mapped[str | None] = mapped_column(String(255), comment="立场/主张")
     resources: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
-    members: Mapped[list] = mapped_column(JSON, default=list, nullable=False, comment="成员 entity_id 列表")
 
 
 class Location(Base, UUIDPkMixin, TimestampMixin):

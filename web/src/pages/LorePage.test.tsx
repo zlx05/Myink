@@ -23,14 +23,14 @@ vi.mock('../lib/api', () => ({
 // 卡片名与事件参与人取不同人名，避免 getByText 命中两处
 const CARD: CharacterCard = {
   id: 'c1', name: '顾长歌', race: '人族', origin: null, realm_cap: '金丹',
-  personality: null, aliases: [], base_attrs: {}, state: { realm: '金丹初期' },
+  personality: null, base_attrs: {}, state: { realm: '金丹初期' },
 }
 
 const EVENTS: StoryEvent[] = [
-  { id: 'e2', summary: '沈岳夜访秘境', participants: ['沈岳'], location_id: null,
-    timeline: null, source_chapter: 7, confidence: 0.8, promoted_to_fact: false },
-  { id: 'e1', summary: '林晚于青云山夺剑', participants: ['林晚'], location_id: null,
-    timeline: '第一日', source_chapter: 3, confidence: 0.9, promoted_to_fact: true },
+  { id: 'e2', summary: '沈岳夜访秘境', participants: ['沈岳'],
+    source_chapter: 7, confidence: 0.8 },
+  { id: 'e1', summary: '林晚于青云山夺剑', participants: ['林晚'],
+    source_chapter: 3, confidence: 0.9 },
 ]
 
 const HISTORY: CharacterStateChange[] = [
@@ -80,7 +80,6 @@ it('renders the event ledger with summaries and participant names', async () => 
   expect(screen.getByText('林晚于青云山夺剑')).toBeTruthy()
   expect(screen.getByText('林晚')).toBeTruthy()
   expect(screen.getByText('沈岳')).toBeTruthy()
-  expect(screen.getByText('已入事实')).toBeTruthy()
 })
 
 it('loads the state-change timeline on first expand, invalidated rows included', async () => {

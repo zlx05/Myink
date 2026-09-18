@@ -168,7 +168,7 @@
 - **冲突片段**：ch25 主线全部围绕黑市玉佩线，万魔渊线开放未推进 20 章、无任何侧面提及。
 - **预期检出**：L1 债务（active 且 `kind=main` 且距 `last_progress_chapter` > 阈值 → 停滞告警）
 - **预期 Finding**：`conflict_type=plotline, severity=hint, scope=local`
-- **检测现状**：✅ **已落地**（2026-08-12，L1 确定性，见 [l1.py](../src/aiink/validation/l1.py) `plot_thread_debt_check` / [test_debt_checks.py](../tests/test_debt_checks.py)）。阈值 15 章；`kind=side` 直接跳过（样例 27 阴性 0 误报）。`open_duration` 字段保留为展示口径，检查按 `last_progress_chapter` 实算。
+- **检测现状**：✅ **已落地**（2026-08-12，L1 确定性，见 [l1.py](../src/aiink/validation/l1.py) `plot_thread_debt_check` / [test_debt_checks.py](../tests/test_debt_checks.py)）。阈值 15 章；`kind=side` 直接跳过（样例 27 阴性 0 误报）。闲置时长按 `last_progress_chapter` 与当前章现算，不落列（2026-09-18 删除从未写入的 `open_duration`）。
 - **误报控制**：支线（`kind=side`）可长期休眠，阈值放宽（样例 27 即此形态）；主线（`kind=main`）停滞才告警；只标 hint，作者决策（推进 / 收线）。
 - **度量指标**：主线停滞检出率、开放线程数曲线（随章节数应不增长，§16）。
 

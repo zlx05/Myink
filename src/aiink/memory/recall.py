@@ -252,7 +252,7 @@ def build_context(session: Session, *, project_id: uuid.UUID, chapter_seq: int,
         for f in repo.get_open_foreshadows(session, project_id)
     ]
     threads_out = [
-        {"name": t.name, "kind": t.kind, "status": t.status, "progress": t.progress,
+        {"name": t.name, "kind": t.kind, "status": t.status,
          "last_progress_chapter": t.last_progress_chapter}
         for t in repo.get_plot_threads(session, project_id)
     ]

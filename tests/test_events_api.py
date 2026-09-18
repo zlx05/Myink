@@ -39,17 +39,17 @@ def _seed_events(pid: str) -> dict[str, str]:
     """种子：2 人物 + 3 事件（含 1 条参与者指向已删角色 + 1 条空参与者）。"""
     p = uuid.UUID(pid)
     with tenant_session(pid) as db:
-        a = Character(project_id=p, name="林晚", aliases=[], race="人族", realm_cap="金丹",
+        a = Character(project_id=p, name="林晚", race="人族", realm_cap="金丹",
                       personality="谨慎隐忍", base_attrs={})
-        b = Character(project_id=p, name="沈岳", aliases=[], race="妖族", realm_cap="元婴",
+        b = Character(project_id=p, name="沈岳", race="妖族", realm_cap="元婴",
                       personality="桀骜", base_attrs={})
         db.add_all([a, b])
         db.flush()
         db.add_all([
             Event(project_id=p, summary="林晚于青云山夺剑", participants=[str(a.id)],
-                  source_chapter=3, confidence=0.9, promoted_to_fact=True, timeline="第一日"),
+                  source_chapter=3, confidence=0.9),
             Event(project_id=p, summary="沈岳夜访秘境", participants=[str(b.id)],
-                  source_chapter=7, confidence=0.8, timeline=None),
+                  source_chapter=7, confidence=0.8),
             # 参与者指向已删角色（不在 characters 表）→ 端点须丢弃而不是回吐裸 uuid
             Event(project_id=p, summary="无名者现身", participants=[str(uuid.uuid4())],
                   source_chapter=9, confidence=0.5),
@@ -98,16 +98,14 @@ def test_events_ordered_desc_and_range_filter(temp_project):
 
 
 def test_events_expose_ledger_fields(temp_project):
-    """台账字段齐全（promoted_to_fact / confidence / timeline）。"""
+    """台账字段齐全（participants 翻名 / confidence）。"""
     pid = temp_project
     _seed_events(pid)
     _, rows = _events(pid)
     top = rows[0]
-    assert set(top) == {"id", "summary", "participants", "location_id", "timeline",
-                        "source_chapter", "confidence", "promoted_to_fact"}
+    assert set(top) == {"id", "summary", "participants", "source_chapter", "confidence"}
     promoted = next(r for r in rows if r["summary"] == "林晚于青云山夺剑")
-    assert promoted["promoted_to_fact"] is True and promoted["confidence"] == 0.9
-    assert promoted["timeline"] == "第一日"
+    assert promoted["confidence"] == 0.9 and promoted["participants"] == ["林晚"]
 
 
 def test_events_empty_project(temp_project):
@@ -137,7 +135,7 @@ def _seed_states(pid: str) -> str:
     """
     p = uuid.UUID(pid)
     with tenant_session(pid) as db:
-        ch = Character(project_id=p, name="林晚", aliases=[], race="人族", realm_cap="金丹",
+        ch = Character(project_id=p, name="林晚", race="人族", realm_cap="金丹",
                        personality="谨慎隐忍", base_attrs={})
         db.add(ch)
         db.flush()

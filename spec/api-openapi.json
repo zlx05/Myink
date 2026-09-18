@@ -443,11 +443,6 @@
       "CharacterCardOut": {
         "description": "人物卡片（静态基底 + 当前状态台账，§7.7）：state 按当前章物化 {field: new_value}。",
         "properties": {
-          "aliases": {
-            "items": {},
-            "title": "Aliases",
-            "type": "array"
-          },
           "base_attrs": {
             "additionalProperties": true,
             "title": "Base Attrs",
@@ -1030,11 +1025,6 @@
           "planted_chapter": {
             "title": "Planted Chapter",
             "type": "integer"
-          },
-          "related_entities": {
-            "items": {},
-            "title": "Related Entities",
-            "type": "array"
           },
           "resolved_chapter": {
             "anyOf": [
@@ -2592,25 +2582,10 @@
             "title": "Id",
             "type": "string"
           },
-          "location_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location Id"
-          },
           "participants": {
             "items": {},
             "title": "Participants",
             "type": "array"
-          },
-          "promoted_to_fact": {
-            "title": "Promoted To Fact",
-            "type": "boolean"
           },
           "source_chapter": {
             "title": "Source Chapter",
@@ -2619,25 +2594,13 @@
           "summary": {
             "title": "Summary",
             "type": "string"
-          },
-          "timeline": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Timeline"
           }
         },
         "required": [
           "id",
           "summary",
           "source_chapter",
-          "confidence",
-          "promoted_to_fact"
+          "confidence"
         ],
         "title": "StoryEventOut",
         "type": "object"

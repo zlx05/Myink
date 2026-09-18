@@ -45,13 +45,11 @@ class Character(BaseModel):
 
     project_id: uuid.UUID
     name: str
-    aliases: list[str] = Field(default_factory=list)
     race: str | None = None
     origin: str | None = None
     realm_cap: str = Field(description="境界上限（战力硬约束）")
     personality: str | None = Field(default=None, description="性格基调（漂移审计基线）")
     base_attrs: dict = Field(default_factory=dict)
-    version: int = 1
 
 
 class Scene(BaseModel):
@@ -111,13 +109,8 @@ class Event(BaseModel):
     project_id: uuid.UUID | None = None
     summary: str
     participants: list[uuid.UUID] = Field(default_factory=list, description="归一化 canonical id")
-    location_id: uuid.UUID | None = None
-    timeline: str | None = None
-    related_threads: list[uuid.UUID] = Field(default_factory=list)
     source_chapter: int = Field(ge=1)
     confidence: float = Field(ge=0, le=1)
-    promoted_to_fact: bool = False
-    version: int = 1
 
 
 class Fact(BaseModel):
@@ -132,7 +125,6 @@ class Fact(BaseModel):
     confirm_status: FactConfirmStatus = "pending"
     valid_from: int = Field(default=1, ge=1)
     valid_to: int | None = None
-    version: int = 1
 
 
 class Relation(BaseModel):
@@ -145,7 +137,6 @@ class Relation(BaseModel):
     properties: dict = Field(default_factory=dict)
     confidence: float = Field(ge=0, le=1)
     source_chapter: int = Field(ge=1)
-    version: int = 1
     valid_from: int = Field(default=1, ge=1)
     valid_to: int | None = None
 
@@ -159,7 +150,6 @@ class Foreshadow(BaseModel):
     planted_chapter: int = Field(ge=1)
     resolved_chapter: int | None = Field(default=None, ge=1)
     trigger: dict = Field(default_factory=dict, description="回收条件：触发者+动作+对象")
-    related_entities: list[uuid.UUID] = Field(default_factory=list)
     last_touched: int | None = Field(default=None, ge=1)
 
 
@@ -171,10 +161,7 @@ class PlotThread(BaseModel):
     kind: PlotThreadKind
     status: PlotThreadStatus
     priority: int = Field(default=1, ge=1)
-    progress: str | None = None
-    participants: list[uuid.UUID] = Field(default_factory=list)
     last_progress_chapter: int | None = Field(default=None, ge=1)
-    open_duration: int | None = None
 
 
 class EvidenceItem(BaseModel):

@@ -36,9 +36,9 @@ def _seed_graph(pid: str) -> None:
     """种子：2 人物 + 1 势力 + 1 活跃关系 + 1 失效关系 + 2 地点（含父子层级）+ 1 实体。"""
     p = uuid.UUID(pid)
     with tenant_session(pid) as db:
-        a = Character(project_id=p, name="林晚", aliases=[], race="人族", realm_cap="金丹",
+        a = Character(project_id=p, name="林晚", race="人族", realm_cap="金丹",
                       personality="谨慎隐忍", base_attrs={})
-        b = Character(project_id=p, name="沈岳", aliases=[], race="妖族", realm_cap="元婴",
+        b = Character(project_id=p, name="沈岳", race="妖族", realm_cap="元婴",
                       personality="桀骜", base_attrs={})
         db.add_all([a, b])
         db.flush()
