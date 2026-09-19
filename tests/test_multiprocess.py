@@ -156,9 +156,11 @@ def _make_test_project(demo_id: str, tag: str) -> str:
 def _enqueue(project_id: str, seq: int, tag: str) -> str:
     """publish 到 RabbitMQ 主队列（queue:tasks-mp-；网关未起，模拟入队结果），返回 task_id。"""
     task_id = str(uuid.uuid4())
+    with new_session() as db:
+        owner_id = str(db.get(Project, uuid.UUID(project_id)).user_id)
     body = {
         "task_id": task_id, "task_type": "chapter_generate",
-        "project_id": project_id, "user_id": f"mp-{tag}",
+        "project_id": project_id, "user_id": owner_id,
         "payload": {"seq": seq}, "trace_id": task_id, "request_id": task_id,
         "retry_count": 0,
     }

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, Uuid, func, text
+from sqlalchemy import CheckConstraint, JSON, DateTime, ForeignKey, Index, Integer, String, Text, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from myink.models.base import Base, TenantMixin, TimestampMixin, UUIDPkMixin
@@ -18,10 +18,19 @@ class User(Base, UUIDPkMixin, TimestampMixin):
 
     email: Mapped[str | None] = mapped_column(String(255), unique=True)
     username: Mapped[str] = mapped_column(String(64), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    auth_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default="1",
+        comment="修改密码/退出时递增，撤销旧 JWT",
+    )
     # 阶段 6：用户等级（VIP → 网关入队 RabbitMQ 高优先级；老库由 db.ensure_user_tier 幂等补齐）
     tier: Mapped[str] = mapped_column(
         String(16), nullable=False, default="normal", server_default="normal",
         comment="用户等级：normal/vip（VIP 任务高优先级入队）",
+    )
+    role: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="user", server_default="user",
+        comment="账号角色：user/admin，与 normal/vip 等级独立",
     )
     daily_quota: Mapped[int] = mapped_column(Integer, default=2, nullable=False, comment="每日章节配额")
     concurrent_limit: Mapped[int] = mapped_column(Integer, default=1, nullable=False, comment="进行中任务上限")
@@ -29,6 +38,11 @@ class User(Base, UUIDPkMixin, TimestampMixin):
     environment: Mapped[dict] = mapped_column(
         JSON, default=dict, nullable=False, server_default=text("'{}'"),
         comment="账号级环境配置（模型连接/路由 + MCP 扫榜）",
+    )
+
+    __table_args__ = (
+        CheckConstraint("role IN ('user', 'admin')", name="user_role"),
+        Index("uq_users_username_canonical", func.lower(func.btrim(username)), unique=True),
     )
 
 
@@ -45,6 +59,13 @@ class Project(Base, UUIDPkMixin, TimestampMixin):
     target_words: Mapped[int | None] = mapped_column(Integer)
     current_volume: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     current_chapter: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Existing/programmatically seeded books remain compatible; HTTP creation is explicitly draft.
+    creation_status: Mapped[str] = mapped_column(
+        String(24), default="legacy_ready", server_default="legacy_ready", nullable=False,
+    )
+    creation_context: Mapped[dict] = mapped_column(
+        JSON, default=dict, server_default=text("'{}'"), nullable=False,
+    )
 
 
 class ProjectSettings(Base, UUIDPkMixin, TimestampMixin):

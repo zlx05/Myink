@@ -6,6 +6,7 @@ import { ProjectRail } from '../components/ProjectRail'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { isProjectDraft, projectHref } from '../lib/projectCreation'
 import type { Project } from '../types'
 import styles from './ProjectsPage.module.css'
 
@@ -70,9 +71,12 @@ export default function ProjectsPage() {
         ) : projects.length === 0 ? (
           <div className="empty">还没有作品。点击右上角「新建作品」，一句话梗概即可创建第一本书。</div>
         ) : (
+          <>
+          <h2 className={styles.sectionTitle}>正式作品</h2>
+          {projects.every(isProjectDraft) && <p className="empty">尚无已完成建书的作品，请先完成下方草稿。</p>}
           <div className={styles.grid}>
-            {projects.map((p) => (
-              <Link key={p.id} to={`/projects/${p.id}`} className={`panel ${styles.card}`}>
+            {projects.filter((p) => !isProjectDraft(p)).map((p) => (
+              <Link key={p.id} to={projectHref(p)} className={`panel ${styles.card}`}>
                 <h2 className={styles.title}>{p.title}</h2>
                 <div className={styles.meta}>
                   {p.genre} · 已写至第 {p.current_chapter} 章
@@ -89,6 +93,22 @@ export default function ProjectsPage() {
               </Link>
             ))}
           </div>
+          {projects.some(isProjectDraft) && (
+            <section aria-label="待完成作品">
+              <h2 className={styles.sectionTitle}>待完成作品</h2>
+              <p className={styles.meta}>草稿已保留。确认设定和整书大纲后，才会进入正式作品并开放写作。</p>
+              <div className={styles.grid}>
+                {projects.filter(isProjectDraft).map((p) => (
+                  <Link key={p.id} to={projectHref(p)} className={`panel ${styles.card}`}>
+                    <h3>{p.title}</h3>
+                    <span className={styles.meta}>{p.creation_status === 'setup_confirmed' ? '设定已确认 · 待确认大纲' : '待完成设定与大纲'}</span>
+                    <span>继续创建 →</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+          </>
         )}
       </main>
     </div>

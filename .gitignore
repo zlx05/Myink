@@ -1,5 +1,6 @@
 # 密钥与配置（plan §17.2：密钥不进代码库）
 .env
+.local/
 *.env
 !*.env.example
 
@@ -19,6 +20,7 @@ htmlcov/
 
 # Go 构建缓存（scripts/ci-local.sh 本地 GOCACHE，体积数百 MB）
 gateway/.tmp-go-cache/
+.tmp/go-cache/
 
 # 本地数据
 *.db

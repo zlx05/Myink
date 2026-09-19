@@ -20,12 +20,12 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ValidationError
 
-from myink.api.auth import require_owner
-from myink.api.schemas import TaskControlOut, TaskDetailOut, TaskSummaryOut
+from myink.api.auth import require_owner, require_user
+from myink.api.schemas import OkOut, TaskControlOut, TaskDetailOut, TaskSummaryOut
 from myink.config import settings
 from myink.context_budget import estimate_tokens
 from myink.db import new_session
-from myink.models import AgentRun, Task
+from myink.models import AgentRun, Project, Task
 from myink.schemas import ChapterPlan
 from myink.providers.base import effective_cost
 from myink.providers.connections import price_tables_from_packed
@@ -49,6 +49,51 @@ def _task_uuid(raw: str) -> uuid.UUID:
         return uuid.UUID(raw)
     except (ValueError, TypeError) as exc:
         raise HTTPException(status_code=400, detail=f"任务 id 非法: {raw}") from exc
+
+
+def require_task_owner(task_id: str, user_id: str = Depends(require_user)) -> None:
+    """Check ownership before task contents, state or checkpoint can be accessed."""
+    tid = _task_uuid(task_id)
+    with new_session() as db:
+        task = db.get(Task, tid)
+        if task is None:
+            raise HTTPException(status_code=404, detail="任务不存在")
+        project_id = str(task.project_id)
+    require_owner(project_id, user_id)
+
+
+@router.get("/projects/{project_id}/access", dependencies=[Depends(require_owner)], response_model=OkOut)
+def project_access(project_id: str, write: bool = False) -> dict:
+    if write:
+        with new_session() as db:
+            project = db.get(Project, uuid.UUID(project_id))
+            if project is None or project.creation_status not in {"ready", "legacy_ready"}:
+                raise HTTPException(status_code=409, detail="PROJECT_NOT_READY")
+    return {"ok": True}
+
+
+@router.get("/tasks/{task_id}/access", response_model=OkOut)
+def task_access(task_id: str, user_id: str = Depends(require_user)) -> dict:
+    """SSE authorization also covers the enqueue-before-materialization window."""
+    tid = _task_uuid(task_id)
+    with new_session() as db:
+        task = db.get(Task, tid)
+        project_id = str(task.project_id) if task is not None else None
+    if project_id is None:
+        try:
+            raw = get_redis().get(f"queue:task-owner:{tid}")
+            owner = json.loads(raw) if raw else None
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="任务归属暂时不可用") from exc
+        if not isinstance(owner, dict):
+            raise HTTPException(status_code=404, detail="任务不存在")
+        if owner.get("user_id") != user_id:
+            raise HTTPException(status_code=403, detail="无权访问该任务")
+        project_id = owner.get("project_id")
+        if not isinstance(project_id, str):
+            raise HTTPException(status_code=403, detail="任务归属非法")
+    require_owner(project_id, user_id)
+    return {"ok": True}
 
 
 def _project_price_tables(db, project_id: uuid.UUID) -> dict[str, dict[str, float]]:
@@ -150,7 +195,7 @@ def _task_payload(task_id: str, with_runs: bool = True) -> dict:
         return data
 
 
-@router.get("/tasks/{task_id}", response_model=TaskDetailOut)
+@router.get("/tasks/{task_id}", dependencies=[Depends(require_task_owner)], response_model=TaskDetailOut)
 def get_task(task_id: str) -> dict:
     return _task_payload(task_id)
 
@@ -239,7 +284,7 @@ def list_project_tasks(project_id: str, chapter_seq: int | None = None) -> list[
         return result
 
 
-@router.post("/tasks/{task_id}/pause", response_model=TaskControlOut)
+@router.post("/tasks/{task_id}/pause", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
 def pause_task(task_id: str) -> dict:
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
@@ -252,7 +297,7 @@ def pause_task(task_id: str) -> dict:
     return {"task_id": task_id, "status": "paused"}
 
 
-@router.post("/tasks/{task_id}/resume", response_model=TaskControlOut)
+@router.post("/tasks/{task_id}/resume", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
 def resume_task(task_id: str) -> dict:
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))
@@ -263,6 +308,7 @@ def resume_task(task_id: str) -> dict:
         task.status = "queued"
         task.error = None
         payload = dict(task.payload)
+        owner_id = str(db.get(Project, task.project_id).user_id)
         db.commit()
     # XADD 续跑消息（同 task_id → thread_id 断点续跑，§6.12）。
     # 按任务类型分流：批次 → batch_resume（batch 图整批续跑）；单章 → chapter_resume
@@ -272,7 +318,7 @@ def resume_task(task_id: str) -> dict:
         "task_id": task_id,
         "task_type": resume_type,
         "project_id": str(task.project_id),
-        "user_id": "",  # 阶段 3 归属断言补齐
+        "user_id": owner_id,
         "payload": {**payload, "position": 0},
         "trace_id": task.trace_id or task_id,
         "request_id": task_id,
@@ -283,7 +329,7 @@ def resume_task(task_id: str) -> dict:
     return {"task_id": task_id, "status": "queued", "message": "已投递续跑消息"}
 
 
-@router.post("/tasks/{task_id}/plan/confirm", response_model=TaskControlOut)
+@router.post("/tasks/{task_id}/plan/confirm", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
 def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
     """确认手动模式计划，用同一任务 ID 从 plan_gate 断点继续。"""
     tid = _task_uuid(task_id)
@@ -334,6 +380,7 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         task.status = "queued"
         task.error = None
         project_id = str(task.project_id)
+        owner_id = str(db.get(Project, task.project_id).user_id)
         trace_id = task.trace_id or task_id
         db.commit()
 
@@ -341,7 +388,7 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
         "task_id": task_id,
         "task_type": "chapter_plan_resume",
         "project_id": project_id,
-        "user_id": payload.get("_gate_user_id") or "",
+        "user_id": owner_id,
         "payload": {**payload, "approved_plan": approved},
         "trace_id": trace_id,
         "request_id": task_id,
@@ -360,7 +407,7 @@ def confirm_task_plan(task_id: str, body: PlanConfirmBody) -> dict:
     return {"task_id": task_id, "status": "queued", "message": "计划已确认，开始写作"}
 
 
-@router.post("/tasks/{task_id}/cancel", response_model=TaskControlOut)
+@router.post("/tasks/{task_id}/cancel", dependencies=[Depends(require_task_owner)], response_model=TaskControlOut)
 def cancel_task(task_id: str) -> dict:
     with new_session() as db:
         task = db.get(Task, _task_uuid(task_id))

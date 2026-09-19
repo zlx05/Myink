@@ -1,6 +1,1133 @@
 {
   "components": {
     "schemas": {
+      "AdminAccessLogOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actor_id",
+          "action",
+          "target",
+          "created_at"
+        ],
+        "title": "AdminAccessLogOut",
+        "type": "object"
+      },
+      "AdminChapter": {
+        "properties": {
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "chapter_seq",
+          "title",
+          "status",
+          "word_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AdminChapter",
+        "type": "object"
+      },
+      "AdminChapterDetail": {
+        "properties": {
+          "chapter_seq": {
+            "title": "Chapter Seq",
+            "type": "integer"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "chapter_seq",
+          "title",
+          "status",
+          "word_count",
+          "created_at",
+          "updated_at",
+          "content",
+          "summary",
+          "version"
+        ],
+        "title": "AdminChapterDetail",
+        "type": "object"
+      },
+      "AdminContext": {
+        "properties": {
+          "characters": {
+            "$ref": "#/components/schemas/AdminContextCollection"
+          },
+          "events": {
+            "$ref": "#/components/schemas/AdminContextCollection"
+          },
+          "facts": {
+            "$ref": "#/components/schemas/AdminContextCollection"
+          },
+          "foreshadows": {
+            "$ref": "#/components/schemas/AdminContextCollection"
+          },
+          "outlines": {
+            "$ref": "#/components/schemas/AdminContextCollection"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/CapturedData"
+          },
+          "threads": {
+            "$ref": "#/components/schemas/AdminContextCollection"
+          }
+        },
+        "required": [
+          "project_id",
+          "settings",
+          "outlines",
+          "events",
+          "facts",
+          "characters",
+          "foreshadows",
+          "threads"
+        ],
+        "title": "AdminContext",
+        "type": "object"
+      },
+      "AdminContextCollection": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CapturedData"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "truncated"
+        ],
+        "title": "AdminContextCollection",
+        "type": "object"
+      },
+      "AdminMetrics": {
+        "properties": {
+          "cost_est": {
+            "default": 0,
+            "description": "Estimated cost, not an invoice",
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "duration_ms": {
+            "default": 0,
+            "description": "Sum of measured node durations; 0 can mean unmeasured",
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "default": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "default": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "run_count": {
+            "default": 0,
+            "title": "Run Count",
+            "type": "integer"
+          }
+        },
+        "title": "AdminMetrics",
+        "type": "object"
+      },
+      "AdminOverview": {
+        "properties": {
+          "chapter_count": {
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "project_count": {
+            "title": "Project Count",
+            "type": "integer"
+          },
+          "task_count": {
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "task_status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Task Status Counts",
+            "type": "object"
+          },
+          "user_count": {
+            "title": "User Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "user_count",
+          "project_count",
+          "chapter_count",
+          "task_count",
+          "metrics",
+          "task_status_counts"
+        ],
+        "title": "AdminOverview",
+        "type": "object"
+      },
+      "AdminPage_AdminAccessLogOut_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminAccessLogOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminAccessLogOut]",
+        "type": "object"
+      },
+      "AdminPage_AdminChapter_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminChapter"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminChapter]",
+        "type": "object"
+      },
+      "AdminPage_AdminProject_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminProject"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminProject]",
+        "type": "object"
+      },
+      "AdminPage_AdminRun_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminRun"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminRun]",
+        "type": "object"
+      },
+      "AdminPage_AdminTask_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminTask"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminTask]",
+        "type": "object"
+      },
+      "AdminPage_AdminUser_": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUser"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "AdminPage[AdminUser]",
+        "type": "object"
+      },
+      "AdminProject": {
+        "properties": {
+          "chapter_count": {
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creation_status": {
+            "title": "Creation Status",
+            "type": "string"
+          },
+          "current_chapter": {
+            "title": "Current Chapter",
+            "type": "integer"
+          },
+          "genre": {
+            "title": "Genre",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "target_words": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Words"
+          },
+          "task_count": {
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "user_id",
+          "username",
+          "title",
+          "genre",
+          "current_chapter",
+          "target_words",
+          "creation_status",
+          "created_at",
+          "updated_at",
+          "chapter_count",
+          "word_count",
+          "task_count",
+          "metrics"
+        ],
+        "title": "AdminProject",
+        "type": "object"
+      },
+      "AdminRun": {
+        "properties": {
+          "cache_hit": {
+            "title": "Cache Hit",
+            "type": "boolean"
+          },
+          "cost_est": {
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "degraded": {
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "user_id",
+          "username",
+          "project_title",
+          "task_id",
+          "node",
+          "role",
+          "model_id",
+          "input_tokens",
+          "output_tokens",
+          "cost_est",
+          "duration_ms",
+          "cache_hit",
+          "degraded",
+          "retry_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AdminRun",
+        "type": "object"
+      },
+      "AdminRunDetail": {
+        "properties": {
+          "cache_hit": {
+            "title": "Cache Hit",
+            "type": "boolean"
+          },
+          "cost_est": {
+            "title": "Cost Est",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "degraded": {
+            "title": "Degraded",
+            "type": "boolean"
+          },
+          "detail": {
+            "$ref": "#/components/schemas/CapturedData"
+          },
+          "detail_missing": {
+            "title": "Detail Missing",
+            "type": "boolean"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/components/schemas/CapturedData"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          },
+          "output_tokens": {
+            "title": "Output Tokens",
+            "type": "integer"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "prompt_missing": {
+            "title": "Prompt Missing",
+            "type": "boolean"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "user_id",
+          "username",
+          "project_title",
+          "task_id",
+          "node",
+          "role",
+          "model_id",
+          "input_tokens",
+          "output_tokens",
+          "cost_est",
+          "duration_ms",
+          "cache_hit",
+          "degraded",
+          "retry_count",
+          "created_at",
+          "updated_at",
+          "detail",
+          "error",
+          "detail_missing",
+          "prompt_missing"
+        ],
+        "title": "AdminRunDetail",
+        "type": "object"
+      },
+      "AdminTask": {
+        "properties": {
+          "batch_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Task Id"
+          },
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "user_id",
+          "username",
+          "project_title",
+          "task_type",
+          "status",
+          "chapter_seq",
+          "batch_task_id",
+          "retry_count",
+          "created_at",
+          "updated_at",
+          "metrics"
+        ],
+        "title": "AdminTask",
+        "type": "object"
+      },
+      "AdminTaskDetail": {
+        "properties": {
+          "batch_task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Batch Task Id"
+          },
+          "chapter_seq": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapter Seq"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "elapsed_includes_waits": {
+            "const": true,
+            "default": true,
+            "title": "Elapsed Includes Waits",
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "description": "created_at to updated_at; includes queue/pause/human waits",
+            "title": "Elapsed Ms",
+            "type": "integer"
+          },
+          "error": {
+            "$ref": "#/components/schemas/CapturedData"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CapturedData"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "task_type": {
+            "title": "Task Type",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "user_id",
+          "username",
+          "project_title",
+          "task_type",
+          "status",
+          "chapter_seq",
+          "batch_task_id",
+          "retry_count",
+          "created_at",
+          "updated_at",
+          "metrics",
+          "payload",
+          "error",
+          "elapsed_ms"
+        ],
+        "title": "AdminTaskDetail",
+        "type": "object"
+      },
+      "AdminUser": {
+        "properties": {
+          "chapter_count": {
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AdminMetrics"
+          },
+          "project_count": {
+            "title": "Project Count",
+            "type": "integer"
+          },
+          "role": {
+            "enum": [
+              "user",
+              "admin"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "task_count": {
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          },
+          "word_count": {
+            "title": "Word Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "tier",
+          "role",
+          "project_count",
+          "chapter_count",
+          "word_count",
+          "task_count",
+          "metrics"
+        ],
+        "title": "AdminUser",
+        "type": "object"
+      },
       "AgentRunOut": {
         "properties": {
           "cache_hit": {
@@ -160,6 +1287,14 @@
             "title": "Expires In",
             "type": "integer"
           },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
           "token": {
             "title": "Token",
             "type": "string"
@@ -167,14 +1302,49 @@
           "user_id": {
             "title": "User Id",
             "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
           }
         },
         "required": [
           "token",
           "user_id",
+          "username",
+          "tier",
+          "role",
           "expires_in"
         ],
         "title": "AuthResponse",
+        "type": "object"
+      },
+      "AuthSessionOut": {
+        "properties": {
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "tier": {
+            "title": "Tier",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "username",
+          "tier",
+          "role"
+        ],
+        "title": "AuthSessionOut",
         "type": "object"
       },
       "BookOutlineOut": {
@@ -212,6 +1382,60 @@
           "status"
         ],
         "title": "CandidateActionOut",
+        "type": "object"
+      },
+      "CaptureLimits": {
+        "properties": {
+          "max_bytes": {
+            "title": "Max Bytes",
+            "type": "integer"
+          },
+          "max_depth": {
+            "title": "Max Depth",
+            "type": "integer"
+          },
+          "max_items": {
+            "title": "Max Items",
+            "type": "integer"
+          },
+          "max_text": {
+            "title": "Max Text",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_depth",
+          "max_items",
+          "max_text",
+          "max_bytes"
+        ],
+        "title": "CaptureLimits",
+        "type": "object"
+      },
+      "CapturedData": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JsonValue"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/CaptureLimits"
+          },
+          "redacted": {
+            "title": "Redacted",
+            "type": "boolean"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "truncated",
+          "redacted",
+          "limits"
+        ],
+        "title": "CapturedData",
         "type": "object"
       },
       "ChapterDetailOut": {
@@ -756,6 +1980,13 @@
       },
       "CreateProjectBody": {
         "properties": {
+          "chapter_count": {
+            "default": 200,
+            "maximum": 1000.0,
+            "minimum": 50.0,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
           "genre": {
             "default": "仙侠玄幻",
             "title": "Genre",
@@ -765,6 +1996,12 @@
             "additionalProperties": true,
             "title": "Genre Fields",
             "type": "object"
+          },
+          "premise": {
+            "default": "",
+            "maxLength": 20000,
+            "title": "Premise",
+            "type": "string"
           },
           "primary_id": {
             "anyOf": [
@@ -777,6 +2014,18 @@
             ],
             "title": "Primary Id"
           },
+          "request_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
           "secondary_id": {
             "anyOf": [
               {
@@ -787,6 +2036,12 @@
               }
             ],
             "title": "Secondary Id"
+          },
+          "storyline": {
+            "default": "",
+            "maxLength": 20000,
+            "title": "Storyline",
+            "type": "string"
           },
           "target_words": {
             "anyOf": [
@@ -1723,6 +2978,7 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "JsonValue": {},
       "LessonActionOut": {
         "properties": {
           "lesson_id": {
@@ -1906,6 +3162,19 @@
         "title": "ModelListOut",
         "type": "object"
       },
+      "OkOut": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "OkOut",
+        "type": "object"
+      },
       "OutlineConfirmBody": {
         "description": "整书大纲确认落库：Objective + 卷（阶段细纲）；premise/章节数/故事线一并保存。",
         "properties": {
@@ -2007,8 +3276,30 @@
         "title": "PlanConfirmBody",
         "type": "object"
       },
+      "ProjectCreationOut": {
+        "properties": {
+          "context": {
+            "additionalProperties": true,
+            "title": "Context",
+            "type": "object"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectOut"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "ProjectCreationOut",
+        "type": "object"
+      },
       "ProjectOut": {
         "properties": {
+          "creation_status": {
+            "default": "legacy_ready",
+            "title": "Creation Status",
+            "type": "string"
+          },
           "current_chapter": {
             "title": "Current Chapter",
             "type": "integer"
@@ -3103,18 +4394,76 @@
         "title": "WritingLessonOut",
         "type": "object"
       },
-      "_TokenRequest": {
+      "_PasswordRequest": {
         "properties": {
+          "current_password": {
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "_PasswordRequest",
+        "type": "object"
+      },
+      "_RegisterRequest": {
+        "properties": {
+          "invitation_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invitation Code"
+          },
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
           "username": {
             "title": "Username",
             "type": "string"
           }
         },
         "required": [
-          "username"
+          "username",
+          "password"
+        ],
+        "title": "_RegisterRequest",
+        "type": "object"
+      },
+      "_TokenRequest": {
+        "properties": {
+          "password": {
+            "title": "Password",
+            "type": "string"
+          },
+          "username": {
+            "title": "Username",
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
         ],
         "title": "_TokenRequest",
         "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "scheme": "bearer",
+        "type": "http"
       }
     }
   },
@@ -3144,9 +4493,986 @@
         "summary": "Healthz"
       }
     },
+    "/internal/v1/admin/access-logs": {
+      "get": {
+        "operationId": "admin_access_logs_internal_v1_admin_access_logs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminAccessLogOut_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Access Logs",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/overview": {
+      "get": {
+        "operationId": "admin_overview_internal_v1_admin_overview_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Overview",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/projects": {
+      "get": {
+        "operationId": "admin_projects_internal_v1_admin_projects_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminProject_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Projects",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/projects/{project_id}/chapters": {
+      "get": {
+        "operationId": "admin_chapters_internal_v1_admin_projects__project_id__chapters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminChapter_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Chapters",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/projects/{project_id}/chapters/{chapter_id}": {
+      "get": {
+        "operationId": "admin_chapter_internal_v1_admin_projects__project_id__chapters__chapter_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "chapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Chapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminChapterDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Chapter",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/projects/{project_id}/context": {
+      "get": {
+        "operationId": "admin_context_internal_v1_admin_projects__project_id__context_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Context",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/runs": {
+      "get": {
+        "operationId": "admin_runs_internal_v1_admin_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Node"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminRun_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Runs",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/runs/{run_id}": {
+      "get": {
+        "operationId": "admin_run_internal_v1_admin_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Run",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/tasks": {
+      "get": {
+        "operationId": "admin_tasks_internal_v1_admin_tasks_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminTask_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Tasks",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/tasks/{task_id}": {
+      "get": {
+        "operationId": "admin_task_internal_v1_admin_tasks__task_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTaskDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Task",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/tasks/{task_id}/runs": {
+      "get": {
+        "operationId": "admin_task_runs_internal_v1_admin_tasks__task_id__runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminRun_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Task Runs",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/admin/users": {
+      "get": {
+        "operationId": "admin_users_internal_v1_admin_users_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPage_AdminUser_"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Admin.Users",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/internal/v1/auth/logout": {
+      "post": {
+        "operationId": "logout_internal_v1_auth_logout_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Logout",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/internal/v1/auth/password": {
+      "post": {
+        "operationId": "change_password_internal_v1_auth_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_PasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Change Password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/internal/v1/auth/register": {
+      "post": {
+        "operationId": "register_internal_v1_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/_RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Register",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/internal/v1/auth/session": {
+      "get": {
+        "operationId": "auth_session_internal_v1_auth_session_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Auth Session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/internal/v1/auth/token": {
       "post": {
-        "description": "签发 JWT（MVP 无密码：用户名即身份，与 seed demo 用户对齐）。",
         "operationId": "issue_token_internal_v1_auth_token_post",
         "requestBody": {
           "content": {
@@ -3727,6 +6053,74 @@
         "summary": "Update Project",
         "tags": [
           "book"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/access": {
+      "get": {
+        "operationId": "project_access_internal_v1_projects__project_id__access_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "write",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Write",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Project Access",
+        "tags": [
+          "tasks"
         ]
       }
     },
@@ -4567,6 +6961,64 @@
           }
         },
         "summary": "Character State History",
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/internal/v1/projects/{project_id}/creation": {
+      "get": {
+        "operationId": "get_creation_internal_v1_projects__project_id__creation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCreationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Creation",
         "tags": [
           "book"
         ]
@@ -6360,6 +8812,22 @@
               "title": "Task Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
+            }
           }
         ],
         "responses": {
@@ -6390,6 +8858,65 @@
         ]
       }
     },
+    "/internal/v1/tasks/{task_id}/access": {
+      "get": {
+        "description": "SSE authorization also covers the enqueue-before-materialization window.",
+        "operationId": "task_access_internal_v1_tasks__task_id__access_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Task Access",
+        "tags": [
+          "tasks"
+        ]
+      }
+    },
     "/internal/v1/tasks/{task_id}/cancel": {
       "post": {
         "operationId": "cancel_task_internal_v1_tasks__task_id__cancel_post",
@@ -6401,6 +8928,22 @@
             "schema": {
               "title": "Task Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6444,6 +8987,22 @@
               "title": "Task Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
+            }
           }
         ],
         "responses": {
@@ -6486,6 +9045,22 @@
             "schema": {
               "title": "Task Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
             }
           }
         ],
@@ -6538,6 +9113,22 @@
             "schema": {
               "title": "Task Id",
               "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Myink-User",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Myink-User"
             }
           }
         ],

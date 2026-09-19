@@ -20,17 +20,22 @@ import uuid
 import pytest
 
 from myink.db import new_session, tenant_session
-from myink.models import Task
+from myink.models import Project, Task
 from myink.worker.processor import process
 from myink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 
 
-def _body(task_id, project_id, task_type="chapter_generate", payload=None, user_id="test-user"):
+def _owner(project_id):
+    with new_session() as db:
+        return str(db.get(Project, uuid.UUID(project_id)).user_id)
+
+
+def _body(task_id, project_id, task_type="chapter_generate", payload=None, user_id=None):
     return {
         "task_id": task_id,
         "task_type": task_type,
         "project_id": project_id,
-        "user_id": user_id,
+        "user_id": user_id or _owner(project_id),
         "payload": payload or {},
         "trace_id": f"trace-{uuid.uuid4().hex[:8]}",
         "request_id": f"req-{uuid.uuid4().hex[:8]}",
@@ -62,7 +67,7 @@ def test_process_materialize_and_done(temp_project, stub_provider):
     body = _body(task_id, project_id, payload={"seq": 1})
 
     # 模拟网关已占本书并发闸门（gates.lua SADD，按书粒度 §13）→ 终态应释放
-    r.sadd(inflight_key("test-user", project_id), task_id)
+    r.sadd(inflight_key(body["user_id"], project_id), task_id)
 
     decision = process(body)
 
@@ -75,7 +80,7 @@ def test_process_materialize_and_done(temp_project, stub_provider):
         assert row.payload.get("seq") == 1
 
     # 并发闸门释放：inflight set 不含该任务
-    assert not r.sismember(inflight_key("test-user", project_id), task_id), "终态应 SREM 并发闸门"
+    assert not r.sismember(inflight_key(body["user_id"], project_id), task_id), "终态应 SREM 并发闸门"
     # lock 释放
     assert r.exists(lock_key(task_id)) == 0
     # SSE 事件：应有 running（物化阶段写）+ done（终态写）；fields 扁平存 event/status
@@ -140,9 +145,9 @@ def test_manual_plan_worker_waits_without_releasing_gate_then_resumes(temp_proje
     monkeypatch.setattr(providers_mod, "default_provider", provider)
     task_id = str(uuid.uuid4())
     r = get_redis()
-    gate = inflight_key("manual-user", temp_project)
+    gate = inflight_key(_owner(temp_project), temp_project)
     body = _body(
-        task_id, temp_project, payload={"seq": 1, "mode": "manual"}, user_id="manual-user",
+        task_id, temp_project, payload={"seq": 1, "mode": "manual"},
     )
     r.sadd(gate, task_id)
     try:
@@ -156,7 +161,7 @@ def test_manual_plan_worker_waits_without_releasing_gate_then_resumes(temp_proje
                         .filter(AgentRun.task_id == task_id, AgentRun.node == "plan_chapter").one())
             approved = plan_run.detail["plan"]
             assert task.status == "awaiting_plan"
-            assert task.payload["_gate_user_id"] == "manual-user"
+            assert task.payload["_gate_user_id"] == _owner(temp_project)
             assert chapter.status == "planning" and not chapter.content
         assert r.sismember(gate, task_id), "等待用户时应占住本书并发闸门"
         assert r.exists(lock_key(task_id)) == 0
@@ -174,7 +179,6 @@ def test_manual_plan_worker_waits_without_releasing_gate_then_resumes(temp_proje
         resume = _body(
             task_id, temp_project, task_type="chapter_plan_resume",
             payload={"seq": 1, "mode": "manual", "approved_plan": approved, "plan_attempt": 1},
-            user_id="manual-user",
         )
         assert process(resume) == "terminal"
         with tenant_session(temp_project) as db:
@@ -199,9 +203,9 @@ def test_stale_plan_resume_cannot_approve_a_new_replan_version(temp_project, mon
     monkeypatch.setattr(providers_mod, "default_provider", provider)
     task_id = str(uuid.uuid4())
     r = get_redis()
-    gate = inflight_key("manual-user", temp_project)
+    gate = inflight_key(_owner(temp_project), temp_project)
     first_body = _body(
-        task_id, temp_project, payload={"seq": 1, "mode": "manual"}, user_id="manual-user",
+        task_id, temp_project, payload={"seq": 1, "mode": "manual"},
     )
     r.sadd(gate, task_id)
     try:
@@ -214,7 +218,7 @@ def test_stale_plan_resume_cannot_approve_a_new_replan_version(temp_project, mon
             task.status = "queued"
             db.commit()
         resume1 = _body(
-            task_id, temp_project, task_type="chapter_plan_resume", user_id="manual-user",
+            task_id, temp_project, task_type="chapter_plan_resume",
             payload={"seq": 1, "mode": "manual", "approved_plan": plan1, "plan_attempt": 1},
         )
         assert process(resume1) == "waiting", "审核 replan 后应再次等待人工"
@@ -235,7 +239,7 @@ def test_stale_plan_resume_cannot_approve_a_new_replan_version(temp_project, mon
             task.status = "queued"
             db.commit()
         resume2 = _body(
-            task_id, temp_project, task_type="chapter_plan_resume", user_id="manual-user",
+            task_id, temp_project, task_type="chapter_plan_resume",
             payload={"seq": 1, "mode": "manual", "approved_plan": plan2, "plan_attempt": 2},
         )
         assert process(resume2) == "terminal"
@@ -255,9 +259,9 @@ def test_cancel_awaiting_plan_releases_gate_and_marks_empty_chapter(temp_project
     monkeypatch.setattr(providers_mod, "default_provider", ManualPlanProvider())
     task_id = str(uuid.uuid4())
     r = get_redis()
-    gate = inflight_key("manual-user", temp_project)
+    gate = inflight_key(_owner(temp_project), temp_project)
     body = _body(
-        task_id, temp_project, payload={"seq": 1, "mode": "manual"}, user_id="manual-user",
+        task_id, temp_project, payload={"seq": 1, "mode": "manual"},
     )
     r.sadd(gate, task_id)
     try:

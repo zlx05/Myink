@@ -1,5 +1,7 @@
 # 安全：密钥/配置绝不打进镜像构建上下文（.env 含 JWT 等，§17.2）
 .env
+.local/
+.tmp/
 *.env
 !.env.example
 

@@ -20,6 +20,7 @@ from langgraph.types import interrupt
 from sqlalchemy.orm import Session
 
 from myink.config import settings
+from myink.admin_observability import capture, capture_detail
 from myink.context_budget import ContextBudgetExceeded, estimate_tokens
 from myink.db import tenant_session
 from myink.memory import repository as repo
@@ -70,7 +71,11 @@ def _materialize_cumulative_state(field: str, old_value: object, new_value: obje
 # ---- 运行记录（§6.8：每节点一行 agent_runs 全字段 + 成本估算）----
 
 def record_run(db: Session, *, project_id: str, task_id: str | None, node: str, role: str | None,
-               resp: ModelResponse, error: str | None = None, detail: dict | None = None) -> None:
+               resp: ModelResponse, error: str | None = None, detail: dict | None = None,
+               messages: list[dict] | None = None) -> None:
+    observed = {"response": {"content": resp.content, "tool_calls": resp.tool_calls}, **(detail or {})}
+    if messages is not None:
+        observed = {"messages": messages, **observed}
     db.add(AgentRun(
         project_id=uuid.UUID(project_id),
         task_id=task_id,  # thread_id（字符串，单章=task_id / 批次= batch:ch{seq}）
@@ -78,7 +83,7 @@ def record_run(db: Session, *, project_id: str, task_id: str | None, node: str, 
         input_tokens=resp.input_tokens, output_tokens=resp.output_tokens,
         cache_hit=resp.cache_hit, duration_ms=resp.duration_ms,
         cost_est=resp.cost_est, retry_count=resp.retry_count,
-        degraded=resp.degraded, error=error, detail=detail,
+        degraded=resp.degraded, error=capture(error)["data"], detail=capture_detail(observed),
     ))
 
 
@@ -93,7 +98,7 @@ def record_plain(db: Session, *, project_id: str, task_id: str | None, node: str
         project_id=uuid.UUID(project_id),
         task_id=task_id, node=node,
         input_tokens=0, output_tokens=0, duration_ms=duration_ms,
-        cost_est=0.0, detail=detail,
+        cost_est=0.0, detail=capture_detail(detail),
     ))
 
 
@@ -109,7 +114,7 @@ def record_run_detail(db: Session, *, task_id: str | None, node: str, detail: di
            .filter(AgentRun.task_id == task_id, AgentRun.node == node)
            .order_by(AgentRun.id.desc()).first())
     if row:
-        row.detail = {**(row.detail or {}), **detail}
+        row.detail = capture_detail({**(row.detail or {}), **detail})
 
 
 # 各节点 max_tokens 上限（§19.3：JSON mode 须设 max_tokens 防截断）。
@@ -183,7 +188,7 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
         )
         # detail 带「到本轮为止已执行的工具」：每轮可审计调了哪些工具（§6.8 debug）
         record_run(db, project_id=state["project_id"], task_id=state.get("task_id"),
-                   node=node, role=role, resp=resp, error=resp.error,
+                   node=node, role=role, resp=resp, error=resp.error, messages=messages,
                    detail={**(detail or {}), "tool_trace": list(tool_trace)})
         if resp.error or not resp.tool_calls:
             return resp, tool_trace
@@ -221,7 +226,7 @@ def _run_tool_loop(db: Session, state: ChapterState, node: str, role: str, chain
             disable_thinking=True, streamer=streamer,
         )
     record_run(db, project_id=state["project_id"], task_id=state.get("task_id"),
-               node=node, role=role, resp=resp, error=resp.error,
+               node=node, role=role, resp=resp, error=resp.error, messages=messages,
                detail={**(detail or {}), "tool_trace": list(tool_trace)})
     return resp, tool_trace
 
@@ -250,7 +255,7 @@ def _llm(db: Session, state: ChapterState, node: str, role: str, chain: Fallback
     resp = _bounded_generate(chain, messages, json_mode=json_mode, max_tokens=max_tokens,
                           disable_thinking=disable_thinking, streamer=streamer)
     record_run(db, project_id=state["project_id"], task_id=state.get("task_id"),
-               node=node, role=role, resp=resp, error=resp.error, detail=detail)
+               node=node, role=role, resp=resp, error=resp.error, detail=detail, messages=messages)
     return resp, []
 
 
@@ -636,7 +641,7 @@ def node_recall(state: ChapterState) -> ChapterState:
         if shared:
             out["shared_context"] = shared
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="recall",
-                     detail={"facts": len(ctx.long_term_facts), "events": len(ctx.mid_term_events),
+                     detail={"context": out["context"], "facts": len(ctx.long_term_facts), "events": len(ctx.mid_term_events),
                              "snapshots": len(ctx.entity_snapshots),
                              "settings": len(ctx.setting_snapshots),
                              "foreshadows": len(ctx.open_foreshadows),
@@ -797,7 +802,7 @@ def node_plan_cast(state: ChapterState) -> ChapterState:
             ctx.token_usage = estimate_tokens(
                 ctx.model_dump(exclude={"token_usage", "recall_stats"}))
         record_plain(db, project_id=pid, task_id=state.get("task_id"), node="plan_cast",
-                     detail={"cast": cast["cast"], "locations": cast["locations"],
+                     detail={"context": ctx.model_dump(mode="json"), "cast": cast["cast"], "locations": cast["locations"],
                              "snapshots": len(ctx.entity_snapshots),
                              "settings": len(ctx.setting_snapshots),
                              "recall_stats": ctx.recall_stats})
@@ -1770,7 +1775,7 @@ def reflexion_for_chapter_window(*, project_id: str, end_chapter: int, task_id: 
             resp = make_chain("audit", db=db, project_id=project_id).generate(messages, json_mode=True,
                                                 max_tokens=_MAX_TOKENS["reflexion"])
             record_run(db, project_id=project_id, task_id=task_id, node="reflexion",
-                       role="Reflexion", resp=resp, error=resp.error,
+                       role="Reflexion", resp=resp, error=resp.error, messages=messages,
                        detail={"findings": len(findings), "recurrences": recurrences})
             if resp.error:
                 return {"reflexion": {"error": resp.error}}

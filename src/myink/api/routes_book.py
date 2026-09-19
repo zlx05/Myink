@@ -28,22 +28,23 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import delete as sa_delete, func
+from sqlalchemy import delete as sa_delete, func, select, text
 
 from myink.api.auth import current_user, require_owner
 from myink.api.schemas import (BookOutlineOut, CharacterCardOut, CharacterStateChangeOut,
                                DeleteProjectOut, EntityCardOut, ForeshadowOut, OutlineDraftOut,
-                               ProjectOut, SetupConfirmOut, SetupDraftOut, StoryEventOut,
+                               ProjectOut, ProjectCreationOut, SetupConfirmOut, SetupDraftOut, StoryEventOut,
                                WorldGraphOut, WorldViewOut)
 from myink.book_setup import generate_book_outline, generate_book_setup
 from myink.config import settings
+from myink.creation import DRAFT_STATES, project_payload, save_proposal, validate_creation_outline
 from myink.genre_catalog import build_book_pack, display_genre, is_managed_pack
 from myink.db import new_session, tenant_session
 from myink.memory.repository import (get_all_characters, get_character, get_character_state,
                                      get_settings, get_volume_outline)
 from myink.models import (AgentRun, Character, CharacterState, Entity, Event, Faction,
                           Foreshadow, Location, Project, ProjectSettings, Relation, Task,
-                          VolumeOutline)
+                          VolumeOutline, User)
 from myink.worker.redis_client import book_key, get_redis, inflight_key, lock_key, sse_key
 from myink.workflow.checkpointer import delete_threads
 from myink.workflow.outline import (CHAPTER_COUNT_MAX, CHAPTER_COUNT_MIN,
@@ -77,6 +78,7 @@ def _uuid_or_400(raw: str, label: str) -> uuid.UUID:
 
 
 class CreateProjectBody(BaseModel):
+    request_id: uuid.UUID | None = None
     title: str
     genre: str = "仙侠玄幻"
     target_words: int | None = None
@@ -84,6 +86,9 @@ class CreateProjectBody(BaseModel):
     primary_id: str | None = None
     secondary_id: str | None = None
     genre_fields: dict = Field(default_factory=dict)
+    premise: str = Field(default="", max_length=20000)
+    chapter_count: int = Field(default=200, ge=50, le=1000)
+    storyline: str = Field(default="", max_length=20000)
 
 
 class ProjectUpdateBody(BaseModel):
@@ -153,6 +158,16 @@ def create_project(body: CreateProjectBody,
         raise HTTPException(status_code=400, detail="作品标题不能为空")
 
     with new_session() as db:
+        # Serialize the daily count and insert for this user; creation is one transaction.
+        if db.scalar(select(User.id).where(User.id == uid).with_for_update()) is None:
+            raise HTTPException(status_code=403, detail="身份非法")
+        if body.request_id is not None:
+            existing = db.scalar(select(Project).where(
+                Project.user_id == uid,
+                Project.creation_context["request_id"].as_string() == str(body.request_id),
+            ))
+            if existing is not None:
+                return project_payload(existing)
         today = func.date_trunc("day", func.now())
         created = db.query(Project).filter(
             Project.user_id == uid, Project.created_at >= today).count()
@@ -168,16 +183,28 @@ def create_project(body: CreateProjectBody,
             genre = display_genre(body.primary_id, body.secondary_id)
         else:
             genre = body.genre.strip() or "仙侠玄幻"
-        project = Project(user_id=uid, title=title, genre=genre, target_words=target_words)
+        project = Project(user_id=uid, title=title, genre=genre, target_words=target_words,
+                          creation_status="draft", creation_context={
+                              "request_id": str(body.request_id) if body.request_id else None,
+                              "premise": body.premise, "chapter_count": body.chapter_count,
+                              "storyline": body.storyline})
         db.add(project)
         db.flush()
         pid = str(project.id)
-        db.commit()  # 根表先落库，后续租户事务才能引用外键（seed._ensure_sample_book 同款）
-    with tenant_session(pid) as tdb:
-        if tdb.query(ProjectSettings).filter_by(project_id=pid).first() is None:
-            tdb.add(ProjectSettings(project_id=pid, genre_pack=genre_pack))
-    return {"id": pid, "title": project.title, "genre": project.genre,
-            "current_chapter": project.current_chapter, "target_words": project.target_words}
+        db.execute(text("SELECT set_config('app.tenant_id', :pid, true)"), {"pid": pid})
+        db.add(ProjectSettings(project_id=pid, genre_pack=genre_pack))
+        db.commit()
+    return project_payload(project)
+
+
+@router.get("/projects/{project_id}/creation", dependencies=[Depends(require_owner)],
+            response_model=ProjectCreationOut)
+def get_creation(project_id: str) -> dict:
+    with new_session() as db:
+        project = db.get(Project, _pid(project_id))
+        if project is None:
+            raise HTTPException(status_code=404, detail="作品不存在")
+        return {"project": project_payload(project), "context": project.creation_context or {}}
 
 
 @router.put("/projects/{project_id}", dependencies=[Depends(require_owner)],
@@ -203,8 +230,7 @@ def update_project(project_id: str, body: ProjectUpdateBody) -> dict:
         elif "target_words" in body.model_fields_set and body.target_words is None:
             project.target_words = None  # 显式传 null → 置空
         db.commit()
-    return {"id": str(project.id), "title": project.title, "genre": project.genre,
-            "current_chapter": project.current_chapter, "target_words": project.target_words}
+    return project_payload(project)
 
 
 def _worker_active(project_id: str) -> bool:
@@ -335,6 +361,7 @@ def setup_draft(project_id: str, body: SetupDraftBody) -> dict:
         db.commit()
     finally:
         db.close()
+    save_proposal(project_id, {"premise": premise, "setup_draft": draft, "setup_error": error})
     return {"draft": draft, "error": error}
 
 
@@ -348,6 +375,15 @@ def put_setup(project_id: str, body: SetupBody) -> dict:
     """
     pid = _pid(project_id)
     with tenant_session(project_id) as db:
+        project = db.scalar(select(Project).where(Project.id == pid).with_for_update())
+        if project.creation_status in DRAFT_STATES:
+            if not (body.world_rules or body.hard_constraints or any(
+                str(item.get("name") or "").strip()
+                for item in body.characters + body.forces + body.locations
+            )):
+                raise HTTPException(status_code=400, detail="SETUP_INCOMPLETE")
+            project.creation_status = "setup_confirmed"
+            project.creation_context = {**(project.creation_context or {}), "setup_draft": body.model_dump()}
         st = get_settings(db, pid)
         if st is None:
             st = ProjectSettings(project_id=pid)
@@ -419,6 +455,9 @@ def outline_draft(project_id: str, body: OutlineDraftBody) -> dict:
         db.commit()
     finally:
         db.close()
+    save_proposal(project_id, {"premise": premise, "chapter_count": cc,
+                              "storyline": body.storyline, "outline_draft": outline,
+                              "outline_error": error})
     return {"outline": outline, "error": error}
 
 
@@ -432,6 +471,17 @@ def put_outline(project_id: str, body: OutlineConfirmBody) -> dict:
         premise=body.premise, chapter_count=body.chapter_count,
         storyline=body.storyline)
     with tenant_session(project_id) as db:
+        project = db.scalar(select(Project).where(Project.id == pid).with_for_update())
+        if project.creation_status in DRAFT_STATES:
+            if project.creation_status != "setup_confirmed":
+                raise HTTPException(status_code=409, detail="SETUP_NOT_CONFIRMED")
+            validate_creation_outline(payload)
+            project.creation_status = "ready"
+            project.creation_context = {**(project.creation_context or {}), "outline_draft": payload}
+        elif project.creation_status == "ready":
+            # Modern books must retain a usable outline after their first confirmation.
+            # Legacy books deliberately keep their historical, less structured format.
+            validate_creation_outline(payload)
         row = get_volume_outline(db, pid, 1)
         if row is None:
             db.add(VolumeOutline(project_id=pid, volume_seq=1, title="整书大纲",

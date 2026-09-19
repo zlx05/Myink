@@ -133,6 +133,7 @@ export function openSSE(
   opts?: OpenSSEOptions,
 ): Promise<SSEResult> {
   const token = getToken()
+  const isStale = () => Boolean(opts?.signal?.aborted) || getToken() !== token
   const sep = url.includes('?') ? '&' : '?'
   const fullUrl = opts?.lastEventId
     ? `${url}${sep}last_event_id=${encodeURIComponent(opts.lastEventId)}`
@@ -149,11 +150,15 @@ export function openSSE(
         signal: opts?.signal,
       })
     } catch {
-      return opts?.signal?.aborted ? { reason: 'aborted' } : { reason: 'network' }
+      return isStale() ? { reason: 'aborted' } : { reason: 'network' }
     }
 
+    if (isStale()) {
+      await res.body?.cancel().catch(() => {})
+      return { reason: 'aborted' }
+    }
     if (res.status === 401) {
-      dispatchUnauthorized()
+      dispatchUnauthorized(token)
       return { reason: 'unauthorized', status: 401 }
     }
     if (res.status === 410) {
@@ -163,6 +168,7 @@ export function openSSE(
       } catch {
         /* 非 JSON 响应 */
       }
+      if (isStale()) return { reason: 'aborted' }
       return { reason: 'expired', status: 410, body }
     }
     if (!res.ok) {
@@ -176,12 +182,24 @@ export function openSSE(
     let terminalSeen = false
     try {
       for (;;) {
+        if (isStale()) {
+          await reader.cancel().catch(() => {})
+          return { reason: 'aborted' }
+        }
         const { done, value } = await reader.read()
         if (done) break
+        if (isStale()) {
+          await reader.cancel().catch(() => {})
+          return { reason: 'aborted' }
+        }
         buf += decoder.decode(value, { stream: true })
         const { frames, rest } = takeFrames(buf)
         buf = rest
         for (const frame of frames) {
+          if (isStale()) {
+            await reader.cancel().catch(() => {})
+            return { reason: 'aborted' }
+          }
           const parsed = parseSSEFrame(frame)
           if (parsed.data === null) continue // 纯注释帧（心跳）
           const ev = parseData(parsed.data)
@@ -200,8 +218,8 @@ export function openSSE(
         }
       }
     } catch {
-      return opts?.signal?.aborted ? { reason: 'aborted' } : { reason: 'eof' }
+      return isStale() ? { reason: 'aborted' } : { reason: 'eof' }
     }
-    return { reason: terminalSeen ? 'terminal' : 'eof' }
+    return isStale() ? { reason: 'aborted' } : { reason: terminalSeen ? 'terminal' : 'eof' }
   })()
 }

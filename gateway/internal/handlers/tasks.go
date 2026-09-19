@@ -98,6 +98,9 @@ func (h *TaskHandler) CreateBatch(c *gin.Context) {
 
 // enqueue 三层闸门 → 入队 → 202 + task_id；闸门拒绝转对应状态码。
 func (h *TaskHandler) enqueue(c *gin.Context, projectID, taskType string, payload map[string]any, quotaN int, costEst float64) {
+	if !checkAccess(c, h.py, "projects", projectID, true) {
+		return
+	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 5*time.Second)
 	defer cancel()
 
@@ -136,19 +139,7 @@ func (h *TaskHandler) enqueue(c *gin.Context, projectID, taskType string, payloa
 // 任务详情：转发 Python API（任务状态 + 批次进度 i/N）。
 // GET /api/v1/tasks/:task_id
 func (h *TaskHandler) GetTask(c *gin.Context) {
-	taskID := c.Param("task_id")
-	body, status, err := h.py.GetTaskDetail(c.Request.Context(), taskID)
-	if err != nil {
-		// 上游明确"任务不存在"（入队→DB 物化的异步窗口内正常）→ 透传 404，
-		// 前端轮询视为"在途"继续等，而非报错；其余 5xx/连接失败才按不可达 502。
-		if status == http.StatusNotFound {
-			c.JSON(http.StatusNotFound, gin.H{"error": "task_not_found"})
-			return
-		}
-		c.JSON(http.StatusBadGateway, gin.H{"error": "python_api_unreachable"})
-		return
-	}
-	c.Data(http.StatusOK, "application/json; charset=utf-8", body)
+	h.forwardToPy(c, "/internal/v1/tasks/"+c.Param("task_id"), nil)
 }
 
 // 确认手动模式章节计划：转发 Python API，由后者校验版本并发布断点恢复消息。
@@ -182,6 +173,10 @@ func (h *TaskHandler) BatchControl(c *gin.Context) {
 // GET /api/v1/projects
 func (h *TaskHandler) ListProjects(c *gin.Context) {
 	h.forwardToPy(c, "/internal/v1/projects", nil)
+}
+
+func (h *TaskHandler) GetCreation(c *gin.Context) {
+	h.forwardToPy(c, "/internal/v1/projects/"+c.Param("project_id")+"/creation", nil)
 }
 
 // 项目任务历史（阶段 4 任务视图）：转发 Python API（切书后展示该书过往任务，

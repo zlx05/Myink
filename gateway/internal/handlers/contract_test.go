@@ -27,8 +27,15 @@ import (
 var forwardedPaths = []struct{ method, path string }{
 	{"GET", "/readyz"}, // Ready 探针：Redis ping + Python /readyz 转发（health.go）
 	{"POST", "/internal/v1/auth/token"},
+	{"POST", "/internal/v1/auth/register"},
+	{"GET", "/internal/v1/auth/session"},
+	{"POST", "/internal/v1/auth/password"},
+	{"POST", "/internal/v1/auth/logout"},
+	{"GET", "/internal/v1/projects/{project_id}/access"},
+	{"GET", "/internal/v1/tasks/{task_id}/access"},
 	{"GET", "/internal/v1/projects"},
 	{"POST", "/internal/v1/projects"},
+	{"GET", "/internal/v1/projects/{project_id}/creation"},
 	{"PUT", "/internal/v1/projects/{project_id}"},
 	{"DELETE", "/internal/v1/projects/{project_id}"},
 	{"GET", "/internal/v1/projects/{project_id}/chapters"},

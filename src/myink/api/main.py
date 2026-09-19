@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from myink.api.auth import current_user, require_owner
 from myink.api.auth import router as auth_router
+from myink.api.routes_admin import router as admin_router
 from myink.api.routes_book import router as book_router
 from myink.api.routes_candidates import router as candidates_router
 from myink.api.routes_chapters import router as chapters_router
@@ -34,6 +35,19 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Myink 内部 API", docs_url=None, redoc_url=None)
 
+
+@app.middleware("http")
+async def admin_no_store(request, call_next):
+    if request.url.path == "/internal/v1/admin" or request.url.path.startswith("/internal/v1/admin/"):
+        try:
+            response = await call_next(request)
+        except Exception:
+            from fastapi.responses import JSONResponse
+            response = JSONResponse({"detail": "ADMIN_REPORT_UNAVAILABLE"}, status_code=503)
+        response.headers["Cache-Control"] = "no-store"
+        return response
+    return await call_next(request)
+
 # 仅网关访问，但 MVP 开发方便看错误；生产收紧为内网白名单（阶段 5）
 app.add_middleware(
     CORSMiddleware,
@@ -43,6 +57,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(book_router)
 app.include_router(tasks_router)
 app.include_router(candidates_router)
@@ -109,6 +124,7 @@ def list_projects(user_id: str | None = Depends(current_user)) -> list[dict]:
                 "genre": p.genre,
                 "current_chapter": p.current_chapter,
                 "target_words": p.target_words,
+                "creation_status": p.creation_status,
             }
             for p in rows
         ]

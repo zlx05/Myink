@@ -6,11 +6,13 @@ package handlers
 
 import (
 	"errors"
+	"math"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 
 	"myink/gateway/internal/trace"
 )
@@ -42,6 +44,12 @@ func JWTMiddleware(secret []byte) gin.HandlerFunc {
 		}
 		c.Set("user_id", sub)
 		c.Set("user_tier", tier)
+		// Claims were verified above; retain expiry to bound long-lived SSE requests.
+		var claims jwt.RegisteredClaims
+		_, _, _ = jwt.NewParser().ParseUnverified(strings.SplitN(c.GetHeader("Authorization"), " ", 2)[1], &claims)
+		if claims.ExpiresAt != nil {
+			c.Set("auth_expires", claims.ExpiresAt.Time)
+		}
 		c.Header(HeaderUser, sub)
 		c.Next()
 	}
@@ -62,13 +70,27 @@ func verifyJWT(authHeader string, secret []byte) (string, string, error) {
 			return nil, errors.New("unexpected_signing_method")
 		}
 		return secret, nil
-	}, jwt.WithValidMethods([]string{"HS256"}))
+	}, jwt.WithValidMethods([]string{"HS256"}), jwt.WithIssuer("myink"), jwt.WithExpirationRequired(), jwt.WithIssuedAt())
 	if err != nil || !token.Valid {
 		return "", "", errInvalidToken
 	}
 	sub, err := token.Claims.GetSubject()
 	if err != nil || sub == "" {
 		return "", "", errInvalidSubject
+	}
+	if _, err := uuid.Parse(sub); err != nil {
+		return "", "", errInvalidSubject
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", "", errInvalidToken
+	}
+	ver, ok := claims["ver"].(float64)
+	if !ok || ver < 1 || math.Trunc(ver) != ver {
+		return "", "", errInvalidToken
+	}
+	if issued, err := claims.GetIssuedAt(); err != nil || issued == nil {
+		return "", "", errInvalidToken
 	}
 	tier := "normal"
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {

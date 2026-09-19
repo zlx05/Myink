@@ -19,6 +19,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	amqp091 "github.com/rabbitmq/amqp091-go"
 
 	"myink/gateway/internal/config"
@@ -28,6 +29,13 @@ import (
 )
 
 const testQueuePrefix = "-h-t-" // RabbitMQ 拓扑隔离：不碰运行中网关/worker 的真实队列
+
+func testIdentity(label string) string {
+	if _, err := uuid.Parse(label); err == nil {
+		return label
+	}
+	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(label)).String()
+}
 
 // bearer 生成 JWT Bearer 头（§14.1 ③：业务路由一律要求已签名 token）。
 // 密钥与 newRouter 的 cfg.JWTSecret 同源（config.Load：默认 DevJWTSecret，环境显式
@@ -41,9 +49,11 @@ func bearer(t *testing.T, sub string) string {
 func bearerTier(t *testing.T, sub, tier string) string {
 	t.Helper()
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  sub,
+		"sub":  testIdentity(sub),
 		"tier": tier,
 		"iss":  "myink",
+		"iat":  time.Now().Unix(),
+		"ver":  1,
 		"exp":  time.Now().Add(time.Hour).Unix(),
 	})
 	s, err := tok.SignedString([]byte(config.Load().JWTSecret))
@@ -157,6 +167,9 @@ func newTestRedis(t *testing.T) *redis.Client {
 // fakePy 内存假 Python API：GET 详情 / POST 控制 / 项目与章节读返回固定 JSON。
 func fakePy() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if serveAuthFixture(w, req) {
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case strings.HasSuffix(req.URL.Path, "/tasks/detail-test"):
@@ -203,7 +216,7 @@ func fakePy() *httptest.Server {
 				`"chapters":[{"seq":1,"title":"第一章 玉佩","goal":"得玉佩、初入青云宗",`+
 				`"beats":["得玉佩","遇苏瑶"]}]}]}}`)
 		case strings.HasSuffix(req.URL.Path, "/auth/token"):
-			fmt.Fprint(w, `{"token":"t-jwt","user_id":"u-1","expires_in":1800}`)
+			fmt.Fprint(w, `{"token":"t-jwt","user_id":"u-1","username":"demo","tier":"normal","role":"user","expires_in":1800}`)
 		default:
 			fmt.Fprint(w, `{"error":"not_found"}`)
 		}
@@ -213,6 +226,9 @@ func fakePy() *httptest.Server {
 // recordingPy 记录所有收到的转发路径，用于断言转发目标（BatchControl 曾转发错路径 batches→tasks）。
 func recordingPy(paths *[]string) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if serveAuthFixture(w, req) {
+			return
+		}
 		*paths = append(*paths, req.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, `{"ok":true}`)
@@ -226,7 +242,7 @@ func TestCreateChapter202(t *testing.T) {
 	defer purgeTestQueues(t)
 
 	// 清理用户闸门键，隔离（含 inflight 残留）
-	uid := "web-test-user"
+	uid := testIdentity("web-test-user")
 	ctx := context.Background()
 	keys, _ := r.Raw().Keys(ctx, "rate:quota:"+uid+":*").Result()
 	bk, _ := r.Raw().Keys(ctx, "rate:bookquota:"+uid+":*").Result()
@@ -281,7 +297,7 @@ func TestCreateChapterPriorityFromJWT(t *testing.T) {
 	obs, conn := bindObserver(t)
 	defer purgeTestQueues(t)
 
-	uid := "web-vip-user"
+	uid := testIdentity("web-vip-user")
 	ctx := context.Background()
 	today := time.Now().Format("2006-01-02")
 	defer func() {
@@ -313,7 +329,7 @@ func TestCreateChapterQuotaRejected(t *testing.T) {
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
 
-	uid := "web-test-quota"
+	uid := testIdentity("web-test-quota")
 	ctx := context.Background()
 	today := time.Now().Format("2006-01-02")
 	// 清残留后占满配额；go-redis Del 调用即执行，defer 必须包闭包
@@ -348,7 +364,7 @@ func TestCreateBatchDeductN(t *testing.T) {
 	py := pyapi.New(fakePy().URL, 3*time.Second)
 	router := newRouter(t, r, py)
 
-	uid := "web-test-batch"
+	uid := testIdentity("web-test-batch")
 	ctx := context.Background()
 	today := time.Now().Format("2006-01-02")
 	// 先清残留闸门键（前次运行可能遗留），再注册末尾清理
@@ -387,7 +403,7 @@ func TestCreateBatchStartDefaultsOne(t *testing.T) {
 	obs, conn := bindObserver(t)
 	defer purgeTestQueues(t)
 
-	uid := "web-batch-start-default"
+	uid := testIdentity("web-batch-start-default")
 	ctx := context.Background()
 	today := time.Now().Format("2006-01-02")
 	defer func() {
@@ -662,7 +678,7 @@ func TestCreateChapterRewritePassthrough(t *testing.T) {
 	obs, conn := bindObserver(t)
 	defer purgeTestQueues(t)
 
-	uid := "web-rewrite-test"
+	uid := testIdentity("web-rewrite-test")
 	ctx := context.Background()
 	today := time.Now().Format("2006-01-02")
 	defer func() {
@@ -1138,7 +1154,7 @@ func TestJWTGoodTokenSetsTrustedHeader(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("好 token 应 200，实际 %d body=%s", w.Code, w.Body.String())
 	}
-	if got := w.Header().Get(HeaderUser); got != "user-123" {
+	if got := w.Header().Get(HeaderUser); got != testIdentity("user-123") {
 		t.Fatalf("应透传 X-Myink-User=user-123，实际 %q", got)
 	}
 }

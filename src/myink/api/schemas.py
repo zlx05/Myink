@@ -17,7 +17,21 @@ from pydantic import BaseModel, Field
 class AuthResponse(BaseModel):
     token: str
     user_id: str
+    username: str
+    tier: str
+    role: str
     expires_in: int
+
+
+class AuthSessionOut(BaseModel):
+    user_id: str
+    username: str
+    tier: str
+    role: str
+
+
+class OkOut(BaseModel):
+    ok: bool
 
 
 class ProjectOut(BaseModel):
@@ -26,6 +40,12 @@ class ProjectOut(BaseModel):
     genre: str
     current_chapter: int
     target_words: int | None = None
+    creation_status: str = "legacy_ready"
+
+
+class ProjectCreationOut(BaseModel):
+    project: ProjectOut
+    context: dict = Field(default_factory=dict)
 
 
 class ChapterMetaOut(BaseModel):

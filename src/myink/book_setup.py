@@ -31,7 +31,7 @@ def generate_book_setup(genre: str, premise: str, *,
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="book_setup",
-                         role="Planner", resp=resp, error=resp.error, detail={"genre": genre})
+                         role="Planner", resp=resp, error=resp.error, messages=messages, detail={"genre": genre})
     if resp.error:
         return {}, resp.error
     try:
@@ -60,7 +60,7 @@ def generate_book_outline(genre: str, premise: str, *, chapter_count: int = 200,
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="book_outline",
-                         role="Planner", resp=resp, error=resp.error,
+                         role="Planner", resp=resp, error=resp.error, messages=messages,
                          detail={"genre": genre, "chapter_count": chapter_count})
     if resp.error:
         return {}, resp.error

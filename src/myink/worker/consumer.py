@@ -23,7 +23,7 @@ import pika
 from myink.config import settings
 from myink.worker import amqp
 from myink.worker.observer import observe
-from myink.worker.processor import process
+from myink.worker.processor import _is_retryable, process, valid_task_owner
 from myink.worker.redis_client import get_redis, sse_key
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,18 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
         ch.basic_ack(method.delivery_tag)
         return
 
+    try:
+        owner_valid = isinstance(body, dict) and valid_task_owner(body)
+    except Exception as exc:
+        if _is_retryable(exc):
+            logger.warning("任务归属暂时无法验证，保留消息: delivery=%s", method.delivery_tag)
+            ch.basic_nack(method.delivery_tag, requeue=True)
+            return
+        raise
+    if not owner_valid:
+        logger.warning("拒绝非法任务消息或归属不匹配: delivery=%s", method.delivery_tag)
+        ch.basic_ack(method.delivery_tag)
+        return
     task_id = body.get("task_id")
     logger.info("取到任务 %s (%s), delivery=%s", task_id, body.get("task_type"), method.delivery_tag)
     # 确保 SSE stream 存在（observer 只追加，首条 status 由 process 写）
@@ -66,6 +78,10 @@ def _on_message(ch, method, properties, body_raw, r, worker_id: str) -> None:
     try:
         decision = process(body, worker_id=worker_id)
     except Exception as exc:
+        if _is_retryable(exc):
+            logger.warning("任务前置检查暂时失败，保留消息: task=%s", task_id)
+            ch.basic_nack(method.delivery_tag, requeue=True)
+            return
         # 非预期异常（坏任务/校验失败）：丢弃不重试，worker 保持存活。
         # 可重试失败在 process 内部已分类返回 "retry"，到不了这里。
         logger.error("任务处理异常丢弃: %s task=%s err=%s", method.delivery_tag, task_id, exc)

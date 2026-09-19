@@ -3,7 +3,21 @@
 export interface AuthResponse {
   token: string
   user_id: string
+  username: string
+  tier: string
+  role: 'user' | 'admin'
   expires_in: number
+}
+
+export interface AuthSessionResponse {
+  user_id: string
+  username: string
+  tier: string
+  role: 'user' | 'admin'
+}
+
+export interface OkResponse {
+  ok: true
 }
 
 export interface Project {
@@ -13,6 +27,20 @@ export interface Project {
   current_chapter: number
   /** 每章目标字数（§6.9 三层字数控制：max_tokens 换算 + L1 长度门禁 + prompt 注入） */
   target_words: number | null
+  creation_status?: 'draft' | 'setup_confirmed' | 'ready' | 'legacy_ready'
+}
+
+export interface ProjectCreation {
+  project: Project
+  context: {
+    premise?: string
+    chapter_count?: number
+    storyline?: string
+    setup_draft?: Record<string, unknown>
+    outline_draft?: Partial<BookOutline>
+    setup_error?: string | null
+    outline_error?: string | null
+  }
 }
 
 export type ChapterStatus =
@@ -461,6 +489,10 @@ export interface AuditRunResponse {
 
 /** 建书（§7.11 建书向导）：POST /projects 创建 Project + 空 ProjectSettings（不调 LLM） */
 export interface CreateProjectBody {
+  request_id?: string
+  premise?: string
+  chapter_count?: number
+  storyline?: string
   title: string
   genre?: string
   /** 传入（含 null）即走题材包建书，显示名锁定为包名 */

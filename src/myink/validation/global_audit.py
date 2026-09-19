@@ -218,7 +218,7 @@ def _run_kind_llm(db: Session, project_id, task_id: str | None, window: tuple[in
     resp = make_chain("audit", db=db, project_id=str(project_id)).generate(
         messages, json_mode=True, max_tokens=nodes._MAX_TOKENS["audit"])
     nodes.record_run(db, project_id=project_id, task_id=task_id, node="global_audit",
-                     role="GlobalAudit", resp=resp, error=resp.error, detail=detail)
+                     role="GlobalAudit", resp=resp, error=resp.error, detail=detail, messages=messages)
     if resp.error:
         return None, resp.error
     try:

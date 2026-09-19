@@ -88,6 +88,12 @@ func Enqueue(ctx context.Context, r *redis.Client, rmq *AMQP, cfg config.Config,
 		return nil, &GateError{Code: reason, Message: reason}
 	}
 
+	// Persist trusted ownership before publishing; SSE may connect before DB materialization.
+	ownerJSON, _ := json.Marshal(map[string]string{"user_id": userID, "project_id": projectID})
+	if err := r.Raw().Set(ctx, "queue:task-owner:"+taskID, string(ownerJSON), 24*time.Hour).Err(); err != nil {
+		_, _ = r.Eval(ctx, compensateScript, []string{quotaKey, bookQuotaKey, inflightKey}, fmt.Sprint(quotaDeductN), taskID)
+		return nil, err
+	}
 	// RabbitMQ 发布（publisher confirm）
 	if err := rmq.PublishTask(ctx, bodyJSON, priority); err != nil {
 		if errors.Is(err, ErrPublishAmbiguous) {

@@ -7,16 +7,23 @@ afterEach(() => {
 })
 
 it('remembers an in-flight write per book', () => {
-  writeActiveWrite('book-a', { taskId: 'task-2', chapterSeq: 2, batchTotal: null })
-  writeActiveWrite('book-b', { taskId: 'task-1', chapterSeq: 1, batchTotal: 3 })
-  expect(readActiveWrite('book-a')).toEqual({ taskId: 'task-2', chapterSeq: 2, batchTotal: null })
-  expect(readActiveWrite('book-b')).toEqual({ taskId: 'task-1', chapterSeq: 1, batchTotal: 3 })
-  clearActiveWrite('book-a')
-  expect(readActiveWrite('book-a')).toBeNull()
-  expect(readActiveWrite('book-b')?.taskId).toBe('task-1')
+  writeActiveWrite('user-a', 'book-a', { taskId: 'task-2', chapterSeq: 2, batchTotal: null })
+  writeActiveWrite('user-a', 'book-b', { taskId: 'task-1', chapterSeq: 1, batchTotal: 3 })
+  expect(readActiveWrite('user-a', 'book-a')).toEqual({ taskId: 'task-2', chapterSeq: 2, batchTotal: null })
+  expect(readActiveWrite('user-a', 'book-b')).toEqual({ taskId: 'task-1', chapterSeq: 1, batchTotal: 3 })
+  clearActiveWrite('user-a', 'book-a')
+  expect(readActiveWrite('user-a', 'book-a')).toBeNull()
+  expect(readActiveWrite('user-a', 'book-b')?.taskId).toBe('task-1')
+})
+
+it('does not expose an in-flight write to another account with the same project id', () => {
+  writeActiveWrite('user-a', 'book-a', { taskId: 'task-a', chapterSeq: 2, batchTotal: null })
+
+  expect(readActiveWrite('user-b', 'book-a')).toBeNull()
+  expect(readActiveWrite('user-a', 'book-a')?.taskId).toBe('task-a')
 })
 
 it('ignores a broken payload instead of throwing', () => {
-  sessionStorage.setItem('myink.activeWrite.book-a', '{')
-  expect(readActiveWrite('book-a')).toBeNull()
+  sessionStorage.setItem('myink.activeWrite.user-a.book-a', '{')
+  expect(readActiveWrite('user-a', 'book-a')).toBeNull()
 })

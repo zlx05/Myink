@@ -4,7 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ThemeProvider } from '../context/ThemeContext'
 import { api } from '../lib/api'
-import { PRESET_STORAGE_KEY, STYLE_STORAGE_KEY, THEME_FONTS, THEME_STORAGE_KEY } from '../lib/theme'
+import { PRESET_STORAGE_KEY, STYLE_STORAGE_KEY, THEME_STORAGE_KEY } from '../lib/theme'
 import AppearancePage from './AppearancePage'
 
 vi.mock('../components/ProjectRail', () => ({ ProjectRail: () => <nav>项目</nav> }))
@@ -137,7 +137,7 @@ it('blocks leaving the page while the font and opacity draft is unsaved', async 
   fireEvent.click(screen.getByRole('link', { name: '返回作品库' }))
   fireEvent.click(screen.getByRole('button', { name: '确认' }))
   expect(await screen.findByText('作品库')).toBeTruthy()
-  expect(cssVar('--font-ui')).toBe(THEME_FONTS[0].css)
+  expect(cssVar('--font-ui')).toContain('sans-serif')
 })
 
 it('writes the preset and the chosen colors only on 保存这套', async () => {
@@ -174,7 +174,7 @@ it('keeps font and opacity edits as a draft until they are saved', async () => {
   fireEvent.click(screen.getByRole('button', { name: '保存' }))
   expect(JSON.parse(localStorage.getItem(STYLE_STORAGE_KEY) || '{}')).toEqual({
     chromeOpacity: 40,
-    font: 'song',
+    font: 'hei',
     fontSize: 'l',
   })
 })
@@ -183,14 +183,15 @@ it('hands the font and opacity to the official themes too', async () => {
   renderPage()
   fireEvent.click(await screen.findByRole('button', { name: '楷体' }))
   expect(cssVar('--font-editor')).toContain('Kaiti')
-  // 字体是整页的：正文和界面一起换
-  expect(cssVar('--font-ui')).toContain('Kaiti')
+  // 正文偏好不再覆盖小字号界面文字。
+  expect(cssVar('--font-ui')).toContain('sans-serif')
+  expect(cssVar('--font-ui')).not.toContain('Kaiti')
   fireEvent.change(screen.getByLabelText('界面透明度'), { target: { value: '40' } })
   expect(cssVar('--surface-1')).toBe('rgba(255, 255, 252, 0.34)')
 
   fireEvent.click(screen.getByRole('button', { name: '还原' }))
-  expect(cssVar('--font-editor')).toBe(THEME_FONTS[0].css)
-  expect(cssVar('--font-ui')).toBe(THEME_FONTS[0].css)
+  expect(cssVar('--font-editor')).toContain('Microsoft YaHei')
+  expect(cssVar('--font-ui')).toContain('sans-serif')
   expect(cssVar('--surface-1')).toBe('')
 })
 

@@ -12,6 +12,13 @@ const DRAFT = {
 }
 
 describe('splitDraft', () => {
+  it('restores confirmed realm order without converting it to a comma-separated rule', () => {
+    const confirmed = sectionToBody(splitDraft(DRAFT))
+    const restored = splitDraft(confirmed as unknown as Record<string, unknown>)
+    expect(restored.realm_order).toEqual(DRAFT.realm_order)
+    expect(restored.world_rules).toEqual(DRAFT.world_rules)
+    expect(sectionToBody(restored)).toEqual(confirmed)
+  })
   it('合法草稿各分区完整解析', () => {
     const s = splitDraft(DRAFT)
     expect(s.realm_order).toEqual(['炼气', '筑基', '金丹'])

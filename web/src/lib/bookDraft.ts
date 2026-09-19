@@ -68,12 +68,15 @@ function strListField(obj: Record<string, unknown>, key: string): string[] {
 
 /** LLM 草稿 dict → 分区编辑态；缺失/类型不符分区回退空默认（§6.12 降级可手填） */
 export function splitDraft(draft: Record<string, unknown>): SetupSection {
+  const rules = draft.world_rules && typeof draft.world_rules === 'object' && !Array.isArray(draft.world_rules)
+    ? draft.world_rules as Record<string, unknown> : {}
+  const { realm_order: savedRealmOrder, ...worldRules } = rules
   const forcesRaw = Array.isArray(draft.forces) ? draft.forces : []
   const charactersRaw = Array.isArray(draft.characters) ? draft.characters : []
   const locationsRaw = Array.isArray(draft.locations) ? draft.locations : []
   return {
-    realm_order: strList(draft.realm_order),
-    world_rules: strDict(draft.world_rules),
+    realm_order: strList(draft.realm_order ?? savedRealmOrder),
+    world_rules: strDict(worldRules),
     hard_constraints: strList(draft.hard_constraints),
     forces: forcesRaw
       .filter((f): f is Record<string, unknown> => !!f && typeof f === 'object')

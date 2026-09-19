@@ -1,13 +1,14 @@
 // 建书向导（§7.11）：书名/题材 + 一句话梗概 → 创建作品 → Planner 生成设定骨架草稿 →
 // 可编辑确认 → 落库跳工作台。agent 只提案、用户确认是唯一 canon（§7.11 ③）。
 // 布局复用 SettingsPage 的 wrap→rail→main→inner；分区编辑控件对齐 KeyField 风格。
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ProjectRail } from '../components/ProjectRail'
 import { RankingsPanel } from '../components/RankingsPanel'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { isProjectDraft } from '../lib/projectCreation'
 import { GenrePackFields } from '../components/GenrePackFields'
 import {
   composeFields,
@@ -26,6 +27,16 @@ import {
 } from '../lib/bookDraft'
 import type { BookOutline, OutlineStage, OutlineVolume, Project } from '../types'
 import styles from './NewProjectPage.module.css'
+
+const PENDING_PROJECT_CREATION_KEY = 'myink.pending-project-creation'
+
+function pendingProjectCreationId(): string {
+  const existing = window.sessionStorage.getItem(PENDING_PROJECT_CREATION_KEY)
+  if (existing) return existing
+  const created = window.crypto.randomUUID()
+  window.sessionStorage.setItem(PENDING_PROJECT_CREATION_KEY, created)
+  return created
+}
 
 /** 通用「每行一条」文本 ↔ 字符串数组（去空行） */
 function linesToArray(text: string): string[] {
@@ -71,6 +82,9 @@ function ApiMessage(err: unknown, fallback: string): string {
 export default function NewProjectPage() {
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const resumeId = searchParams.get('draft')
+  const currentPid = useRef<string | null>(null)
 
   const [title, setTitle] = useState('')
   // 已落库的书名（AI 起名/用户填写后确认）；书名留空时由 Planner 在设定草稿带 title 建议
@@ -92,15 +106,64 @@ export default function NewProjectPage() {
   const [outlineStoryline, setOutlineStoryline] = useState('')
   const [outline, setOutline] = useState<BookOutline | null>(null)
   const [outlineError, setOutlineError] = useState<string | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(resumeId ? 'restore' : null)
   const [banner, setBanner] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
 
   useEffect(() => {
+    void api.listProjects().then(setProjects).catch(() => {})
     void api.listGenrePacks().then(setCatalog).catch(() => {
       setBanner('题材目录加载失败，可先不选题材创建')
     })
   }, [])
+
+  useEffect(() => {
+    if (resumeId && currentPid.current === resumeId) return
+    let disposed = false
+    currentPid.current = null
+    setPid(null)
+    setTitle('')
+    setSavedTitle('')
+    setPrimaryId(null)
+    setSecondaryId(null)
+    setGenreFields(emptyFields())
+    setPremise('')
+    setTargetWords('3000')
+    setSection(null)
+    setDraftError(null)
+    setSetupConfirmed(false)
+    setOutlineCount('200')
+    setOutlineStoryline('')
+    setOutline(null)
+    setOutlineError(null)
+    setBanner(null)
+    setOk(null)
+    setBusy(resumeId ? 'restore' : null)
+    if (!resumeId) return () => { disposed = true }
+    void api.getCreation(resumeId).then(({ project, context }) => {
+      if (disposed) return
+      if (!isProjectDraft(project)) {
+        navigate(`/projects/${project.id}`, { replace: true })
+        return
+      }
+      currentPid.current = project.id
+      setPid(project.id)
+      setTitle(project.title)
+      setSavedTitle(project.title)
+      setTargetWords(String(project.target_words ?? 3000))
+      setPremise(context.premise ?? '')
+      setOutlineCount(String(context.chapter_count ?? 200))
+      setOutlineStoryline(context.storyline ?? '')
+      setSection(splitDraft(context.setup_draft ?? {}))
+      setSetupConfirmed(project.creation_status === 'setup_confirmed')
+      setDraftError(context.setup_error ?? null)
+      setOutlineError(context.outline_error ?? null)
+      setOutline({ objective: context.outline_draft?.objective ?? '', volumes: context.outline_draft?.volumes ?? [] })
+      setOk('已恢复待完成作品，可继续确认设定与大纲；不会重复创建作品。')
+    }).catch((err) => { if (!disposed) setBanner(ApiMessage(err, '恢复草稿失败，请刷新重试')) })
+      .finally(() => { if (!disposed) setBusy(null) })
+    return () => { disposed = true }
+  }, [resumeId, navigate])
 
   const primary = catalog.find((item) => item.id === primaryId) ?? null
   const secondary = catalog.find((item) => item.id === secondaryId) ?? null
@@ -123,6 +186,7 @@ export default function NewProjectPage() {
   }
 
   async function createAndDraft() {
+    if (pid || resumeId || busy) return
     const brief = premise.trim()
     if (!brief) {
       setBanner('请填写创作简报（设定与大纲的种子）')
@@ -134,6 +198,18 @@ export default function NewProjectPage() {
       return
     }
     const finalTitle = title.trim() || '未命名作品'
+    const chapterCount = Number(outlineCount)
+    if (!Number.isInteger(chapterCount) || chapterCount < 50 || chapterCount > 1000) {
+      setBanner('大致章节数需为 50–1000 的整数')
+      return
+    }
+    let requestId: string
+    try {
+      requestId = pendingProjectCreationId()
+    } catch {
+      setBanner('无法安全保存创建请求，请检查浏览器存储权限后重试')
+      return
+    }
     setBusy('create')
     setBanner(null)
     setOk(null)
@@ -144,13 +220,30 @@ export default function NewProjectPage() {
         secondary_id: secondaryId,
         genre_fields: genreFields,
         target_words: words,
+        premise: brief,
+        chapter_count: chapterCount,
+        storyline: outlineStoryline.trim(),
+        request_id: requestId,
       })
+      let storageCleanupFailed = false
+      try {
+        window.sessionStorage.removeItem(PENDING_PROJECT_CREATION_KEY)
+      } catch {
+        storageCleanupFailed = true
+      }
+      currentPid.current = project.id
       setPid(project.id)
+      setSearchParams({ draft: project.id }, { replace: true })
       setSavedTitle(finalTitle)
-      setProjects(await api.listProjects())
+      void api.listProjects().then(setProjects).catch(() => {})
       // InkOS 风格一键建书：设定草稿 + 整书大纲草稿并行生成（outline 只读 genre/premise，无需等设定确认）
-      await Promise.all([regenerate(project.id), generateOutline(project.id)])
-      setOk('作品已创建，设定与整书大纲草稿已生成，可编辑后确认')
+      const results = await Promise.all([regenerate(project.id, true), generateOutline(project.id, true)])
+      setOk(results.every(Boolean)
+        ? '作品草稿已保存，设定与整书大纲提案已生成，请编辑并确认。'
+        : '作品草稿已保存；草稿生成未全部完成，请检查提示后重试或手动填写。')
+      if (storageCleanupFailed) {
+        setBanner('作品已创建，但无法清除本机创建标识；后续重试会安全复用同一作品。')
+      }
     } catch (err) {
       setBanner(ApiMessage(err, '创建作品失败，请重试'))
     } finally {
@@ -158,8 +251,8 @@ export default function NewProjectPage() {
     }
   }
 
-  async function regenerate(forPid: string) {
-    setBusy('draft')
+  async function regenerate(forPid: string, managed = false) {
+    if (!managed) setBusy('draft')
     setBanner(null)
     setDraftError(null)
     try {
@@ -177,10 +270,13 @@ export default function NewProjectPage() {
           /* 标题是标签，回写失败静默（不阻塞草稿生成） */
         }
       }
+      return !resp.error
     } catch (err) {
       setBanner(ApiMessage(err, '生成设定草稿失败，请重试'))
+      setSection(emptySection())
+      return false
     } finally {
-      setBusy(null)
+      if (!managed) setBusy(null)
     }
   }
 
@@ -201,14 +297,14 @@ export default function NewProjectPage() {
     }
   }
 
-  // ③ 整书大纲：Planner 按目标章节数分卷提案 Objective + 卷 + 逐章；草稿不落库，确认后 PUT 整体替换。
-  async function generateOutline(forPid: string) {
+  // ③ 提案保存到创建上下文供恢复；确认后才写入正式大纲。
+  async function generateOutline(forPid: string, managed = false) {
     const cc = Number(outlineCount)
     if (!Number.isInteger(cc) || cc < 50 || cc > 1000) {
       setBanner('大致章节数需为 50–1000 的整数')
-      return
+      return false
     }
-    setBusy('outline-draft')
+    if (!managed) setBusy('outline-draft')
     setBanner(null)
     setOutlineError(null)
     try {
@@ -223,10 +319,13 @@ export default function NewProjectPage() {
         volumes: Array.isArray(resp.outline.volumes) ? resp.outline.volumes : [],
       })
       setOutlineError(resp.error)
+      return !resp.error
     } catch (err) {
       setBanner(ApiMessage(err, '生成大纲失败，请重试'))
+      setOutline({ objective: '', volumes: [] })
+      return false
     } finally {
-      setBusy(null)
+      if (!managed) setBusy(null)
     }
   }
 
@@ -269,7 +368,7 @@ export default function NewProjectPage() {
   }
 
   async function confirmOutline() {
-    if (!pid || !outline) return
+    if (!pid || !outline || !setupConfirmed) return
     setBusy('outline-confirm')
     setBanner(null)
     setOk(null)
@@ -286,16 +385,19 @@ export default function NewProjectPage() {
 
   /** 确认全部并进入工作台（InkOS 风格一次落地）：设定未确认先落，再落大纲，再进入 */
   async function confirmAll() {
-    if (!pid) return
+    if (!pid || !outline || !section || isSectionEmpty(section)) {
+      setBanner('请先填写有效的设定与整书大纲')
+      return
+    }
     setBusy('confirm-all')
     setBanner(null)
     setOk(null)
     try {
-      if (!setupConfirmed && section) {
+      if (section) {
         await api.confirmSetup(pid, sectionToBody(section))
         setSetupConfirmed(true)
       }
-      if (outline) await persistOutline()
+      await persistOutline()
       await syncTitle()
       setOk('设定与整书大纲已落库，进入工作台')
       navigate(`/projects/${pid}`)
@@ -306,15 +408,15 @@ export default function NewProjectPage() {
     }
   }
 
-  /** 暂不规划直接进入：先同步书名再跳转 */
-  async function enterWorkspace() {
+  /** 未完成作品保留为草稿，不开放写作。 */
+  async function leaveDraft() {
     if (!pid) return
     try {
       await syncTitle()
     } catch {
       /* 标题同步失败不阻塞进入 */
     }
-    navigate(`/projects/${pid}`)
+    navigate('/projects')
   }
 
   const updateOutline = (patch: Partial<BookOutline>) =>
@@ -397,13 +499,14 @@ export default function NewProjectPage() {
         <div className={styles.inner}>
           <header className={styles.header}>
             <div>
-              <h1>新建作品</h1>
+              <h1>{pid || resumeId ? '继续创建作品' : '新建作品'}</h1>
               <div className={styles.crumb}>创作简报启动，AI 生成设定骨架与整书大纲，你确认后落库。</div>
             </div>
           </header>
 
           {banner && <div className="banner banner-error">{banner}</div>}
           {ok && <div className="banner banner-warning">{ok}</div>}
+          {pid && <p className={styles.hint}>草稿和已确认内容已保留。手动编辑请点击对应确认按钮保存；未确认编辑离开后不会保留。完成设定与有效大纲后才开放写作。</p>}
 
           {/* 扫榜灵感（§10）：建书前的题材风向参考，全局端点；不注入任何生成节点 */}
           <RankingsPanel />
@@ -415,6 +518,7 @@ export default function NewProjectPage() {
               <input
                 className="input"
                 value={title}
+                disabled={busy === 'restore'}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="如《破晓录》，留空由 AI 起名"
                 maxLength={60}
@@ -434,6 +538,7 @@ export default function NewProjectPage() {
                       <button
                         key={item.id}
                         type="button"
+                        disabled={busy === 'restore' || pid !== null}
                         className={styles.chip + (primaryId === item.id ? ' ' + styles.chipOn : '')}
                         onClick={() => pickPrimary(item.id)}
                       >
@@ -453,7 +558,7 @@ export default function NewProjectPage() {
                         <button
                           key={item.id}
                           type="button"
-                          disabled={!primaryId || item.id === primaryId}
+                          disabled={busy === 'restore' || pid !== null || !primaryId || item.id === primaryId}
                           className={styles.chip + (secondaryId === item.id ? ' ' + styles.chipOn : '')}
                           onClick={() => pickSecondary(item.id)}
                         >
@@ -466,7 +571,9 @@ export default function NewProjectPage() {
               </div>
               <details className={styles.genreDetails}>
                 <summary>题材详情（默认折叠，可按自己的想法改）</summary>
-                <GenrePackFields value={genreFields} onChange={setGenreFields} />
+                <fieldset disabled={busy === 'restore' || pid !== null} style={{ border: 0, padding: 0, margin: 0 }}>
+                  <GenrePackFields value={genreFields} onChange={setGenreFields} />
+                </fieldset>
               </details>
             </div>
             <label className={styles.field}>
@@ -481,6 +588,7 @@ export default function NewProjectPage() {
                 max={20000}
                 step={100}
                 value={targetWords}
+                disabled={busy === 'restore' || pid !== null}
                 onChange={(e) => setTargetWords(e.target.value)}
               />
             </label>
@@ -490,6 +598,7 @@ export default function NewProjectPage() {
                 className="textarea"
                 rows={5}
                 value={premise}
+                disabled={busy === 'restore'}
                 onChange={(e) => setPremise(e.target.value)}
                 placeholder={
                   '写你的脑洞，越具体越好：题材、主角身份、金手指、世界观、关键冲突或想要的结局。\n' +
@@ -502,10 +611,10 @@ export default function NewProjectPage() {
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={busy !== null}
+                disabled={busy !== null || pid !== null || resumeId !== null}
                 onClick={createAndDraft}
               >
-                {busy === 'create' ? '创建中…' : '创建作品'}
+                {pid ? '作品草稿已保存' : busy === 'create' ? '创建中…' : '创建作品'}
               </button>
             </div>
           </section>
@@ -517,7 +626,7 @@ export default function NewProjectPage() {
                 <button
                   type="button"
                   className="btn btn-quiet"
-                  disabled={busy !== null}
+                  disabled={busy !== null || setupConfirmed}
                   onClick={() => regenerate(pid)}
                 >
                   {busy === 'draft' ? '重新生成中…' : '重新生成草稿'}
@@ -980,7 +1089,7 @@ export default function NewProjectPage() {
                     <button
                       type="button"
                       className="btn btn-quiet"
-                      disabled={busy !== null}
+                      disabled={busy !== null || !setupConfirmed || !outline.objective.trim() || outline.volumes.length === 0}
                       onClick={confirmOutline}
                     >
                       {busy === 'outline-confirm' ? '确认中…' : '仅确认大纲并进入'}
@@ -988,7 +1097,7 @@ export default function NewProjectPage() {
                     <button
                       type="button"
                       className="btn btn-primary"
-                      disabled={busy !== null}
+                      disabled={busy !== null || !outline.objective.trim() || outline.volumes.length === 0 || emptyDraft}
                       onClick={confirmAll}
                     >
                       {busy === 'confirm-all' ? '确认中…' : '确认设定与大纲并进入工作台'}
@@ -997,9 +1106,9 @@ export default function NewProjectPage() {
                       type="button"
                       className="btn btn-quiet"
                       disabled={busy !== null}
-                      onClick={enterWorkspace}
+                      onClick={leaveDraft}
                     >
-                      暂不规划，直接进入
+                      保留草稿，返回作品库
                     </button>
                   </div>
                 </div>
@@ -1010,9 +1119,9 @@ export default function NewProjectPage() {
                     type="button"
                     className="btn btn-quiet"
                     disabled={busy !== null}
-                    onClick={enterWorkspace}
+                    onClick={leaveDraft}
                   >
-                    暂不规划，直接进入工作台
+                    保留草稿，返回作品库
                   </button>
                 </div>
               )}

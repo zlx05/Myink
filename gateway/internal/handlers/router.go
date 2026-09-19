@@ -22,23 +22,36 @@ import (
 func NewRouter(cfg config.Config, r *redis.Client, rmq *queue.AMQP, py *pyapi.Client) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
+	router.Use(AdminNoStore())
 	router.Use(gin.Recovery())
 	router.Use(trace.Middleware())
 	// 进程内令牌桶：粗粒度限流（防外部刷接口；细粒度配额走 gates.lua §13）
 	router.Use(limiter.Middleware(rate.Limit(cfg.RatePerSec), cfg.RateBurst))
 
 	taskH := NewTaskHandler(cfg, r, rmq, py)
-	sseH := NewSSEHandler(r)
+	sseH := NewSSEHandler(r, py)
 	healthH := NewHealthHandler(cfg, r, py)
 
 	api := router.Group("/api/v1")
 	// 签发端点不挂 JWT（否则无法登录）；业务路由一律 Bearer（§14.1 ③）
-	api.POST("/auth/token", taskH.AuthToken)
+	api.POST("/auth/token", AuthRateLimit(r), taskH.AuthAction)
+	api.POST("/auth/register", AuthRateLimit(r), taskH.AuthAction)
 
-	secured := api.Group("", JWTMiddleware([]byte(cfg.JWTSecret)))
+	secured := api.Group("", JWTMiddleware([]byte(cfg.JWTSecret)), SessionMiddleware(py))
+	for _, path := range []string{
+		"/overview", "/users", "/projects", "/projects/:project_id/chapters",
+		"/projects/:project_id/chapters/:chapter_id", "/projects/:project_id/context",
+		"/tasks", "/tasks/:task_id", "/tasks/:task_id/runs", "/runs", "/runs/:run_id", "/access-logs",
+	} {
+		secured.GET("/admin"+path, taskH.AdminRead)
+	}
 	{
+		secured.GET("/auth/session", taskH.AuthAction)
+		secured.POST("/auth/password", AuthRateLimit(r), taskH.AuthAction)
+		secured.POST("/auth/logout", taskH.AuthAction)
 		// 项目/章节读（多书展示前端，转发 Python API）
 		secured.GET("/projects", taskH.ListProjects)
+		secured.GET("/projects/:project_id/creation", taskH.GetCreation)
 		secured.POST("/projects", taskH.CreateProject)
 		// 作品信息更新（§6.9 每章目标字数可配）
 		secured.PUT("/projects/:project_id", taskH.UpdateProject)

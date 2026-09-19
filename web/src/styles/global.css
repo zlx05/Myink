@@ -25,7 +25,7 @@ body {
   background-position: var(--canvas-position, center);
   background-repeat: var(--canvas-repeat, no-repeat);
   background-attachment: fixed;
-  -webkit-font-smoothing: antialiased;
+  /* 使用浏览器/系统原生抗锯齿，不强制灰阶或缩放整个页面。 */
 }
 
 h1,
@@ -47,7 +47,10 @@ h3 {
   font-size: var(--text-heading);
 }
 
-button {
+button,
+input,
+textarea,
+select {
   font-family: inherit;
   font-size: var(--text-body);
 }

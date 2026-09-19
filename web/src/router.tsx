@@ -2,6 +2,8 @@
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import AuditPage from './pages/AuditPage'
+import AccountPage from './pages/AccountPage'
+import AdminPage from './pages/AdminPage'
 import AppearancePage from './pages/AppearancePage'
 import EnvironmentPage from './pages/EnvironmentPage'
 import LoginPage from './pages/LoginPage'
@@ -12,9 +14,20 @@ import SettingsPage from './pages/SettingsPage'
 import WorkspacePage from './pages/WorkspacePage'
 
 function RequireAuth() {
-  const { session } = useAuth()
+  const { session, status, validationError, revalidate, logout } = useAuth()
+  if (status === 'checking') return <div className="empty">正在验证登录状态…</div>
+  if (status === 'unavailable') {
+    return (
+      <div className="empty">
+        <p>{validationError}</p>
+        <button type="button" className="btn btn-primary" onClick={revalidate}>重试</button>{' '}
+        <button type="button" className="btn btn-quiet" onClick={() => void logout()}>退出登录</button>
+      </div>
+    )
+  }
   if (!session) return <Navigate to="/login" replace />
-  return <Outlet />
+  // token 或账号改变即卸载整个受保护子树，旧 fetch 状态与 SSE 随组件清理一并丢弃。
+  return <Outlet key={`${session.userId}:${session.token}`} />
 }
 
 export const router = createBrowserRouter([
@@ -24,6 +37,8 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <Navigate to="/projects" replace /> },
       { path: '/projects', element: <ProjectsPage /> },
+      { path: '/account', element: <AccountPage /> },
+      { path: '/admin', element: <AdminPage /> },
       { path: '/environment', element: <EnvironmentPage /> },
       { path: '/theme', element: <AppearancePage /> },
       { path: '/appearance', element: <Navigate to="/theme" replace /> },

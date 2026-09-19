@@ -1,6 +1,8 @@
 """模型包：导入全部模型以注册到 Base.metadata（alembic autogenerate 依赖）。"""
 
 from myink.models.base import Base
+from myink.models.admin import AdminAccessLog
+from myink.models.invitation import Invitation
 from myink.models.chapter import (
     Chapter,
     ChapterVersion,
@@ -47,6 +49,8 @@ from myink.models.validation import Finding, ValidationReport
 
 __all__ = [
     "Base",
+    "AdminAccessLog",
+    "Invitation",
     # project
     "User",
     "Project",

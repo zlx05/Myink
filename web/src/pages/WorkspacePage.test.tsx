@@ -22,7 +22,7 @@ const liveTask = vi.hoisted(() => ({
 }))
 
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ logout: vi.fn() }),
+  useAuth: () => ({ logout: vi.fn(), session: { userId: 'test-user', username: 'alice' } }),
 }))
 
 vi.mock('../hooks/useTaskEvents', () => ({
@@ -241,7 +241,7 @@ it('ignores a late chapter list from the previous book after switching projects'
 })
 
 it('reconnects from the remembered write when the worker has not persisted the task yet', async () => {
-  sessionStorage.setItem('myink.activeWrite.project-a', JSON.stringify({
+  sessionStorage.setItem('myink.activeWrite.test-user.project-a', JSON.stringify({
     taskId: 'task-2', chapterSeq: 2, batchTotal: null,
   }))
   vi.mocked(api.listProjects).mockResolvedValue([])

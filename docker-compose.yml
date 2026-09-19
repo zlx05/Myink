@@ -1,7 +1,7 @@
 # Myink 阶段 5 首切：一键启动全部服务（PostgreSQL+pgvector / Redis / Python API / Worker / Go 网关）。
 # 用法：docker compose up -d --build  →  访问 http://localhost:8080（网关静态托管前端，同源出页面+API+SSE）。
-# 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 容器 command 先跑 `myink init`
-# （幂等：建表 + RLS + demo 种子）再起 uvicorn。无 key 也能启动看界面；生成请在前端「环境配置」填模型 Key。
+# 首次初始化：pg 挂载 docker/initdb 建 myink_app 角色（NOBYPASSRLS）；api 先跑 `myink init --no-seed`
+# （幂等：建表 + RLS，不重建改名后的 demo）再起 uvicorn。需要开发示例数据时手工执行 `myink init`。
 name: myink
 
 services:
@@ -63,7 +63,7 @@ services:
       retries: 30
     restart: unless-stopped
 
-  # Python API：容器内先 `myink init`（幂等）再起 uvicorn（仅内部监听，网关转发入口）。
+  # Python API：只升级数据库，不在每次启动时重建示例账号（仅内部监听，网关转发入口）。
   # env_file 注入 .env（JWT / 加密主密钥等）；environment 显式覆盖网络相关项
   # （compose 优先级 environment > env_file；本地 localhost 串在容器网络内必须换服务名）。
   myink-api:
@@ -92,7 +92,7 @@ services:
       # 扫榜灵感（§10 MCP Client）：容器内显式声明（env_file 已注入，重复声明仅文档化意图 + 防 .env 缺失）
       RANKINGS_ENABLED: "1"
       RANKINGS_MCP_URL: https://daosearch.io/api/mcp
-    command: ["sh", "-c", "myink init && myink-api"]
+    command: ["sh", "-c", "myink init --no-seed && myink-api"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8100/openapi.json')"]
       interval: 5s

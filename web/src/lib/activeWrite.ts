@@ -8,12 +8,12 @@ export interface ActiveWrite {
   batchTotal: number | null
 }
 
-const keyFor = (projectId: string) => `myink.activeWrite.${projectId}`
+const keyFor = (userId: string, projectId: string) => `myink.activeWrite.${userId}.${projectId}`
 
-export function readActiveWrite(projectId: string): ActiveWrite | null {
-  if (!projectId) return null
+export function readActiveWrite(userId: string, projectId: string): ActiveWrite | null {
+  if (!userId || !projectId) return null
   try {
-    const raw = sessionStorage.getItem(keyFor(projectId))
+    const raw = sessionStorage.getItem(keyFor(userId, projectId))
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<ActiveWrite>
     const chapterSeq = Number(parsed.chapterSeq)
@@ -28,12 +28,12 @@ export function readActiveWrite(projectId: string): ActiveWrite | null {
   }
 }
 
-export function writeActiveWrite(projectId: string, value: ActiveWrite): void {
-  if (!projectId) return
-  sessionStorage.setItem(keyFor(projectId), JSON.stringify(value))
+export function writeActiveWrite(userId: string, projectId: string, value: ActiveWrite): void {
+  if (!userId || !projectId) return
+  sessionStorage.setItem(keyFor(userId, projectId), JSON.stringify(value))
 }
 
-export function clearActiveWrite(projectId: string): void {
-  if (!projectId) return
-  sessionStorage.removeItem(keyFor(projectId))
+export function clearActiveWrite(userId: string, projectId: string): void {
+  if (!userId || !projectId) return
+  sessionStorage.removeItem(keyFor(userId, projectId))
 }

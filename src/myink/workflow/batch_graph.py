@@ -146,7 +146,7 @@ def node_batch_plan(state: BatchState) -> BatchState:
         messages = _batch_plan_messages(state, outline=outline)
         resp = make_chain("planner", db=db, project_id=pid).generate(messages, json_mode=True)
         nodes.record_run(db, project_id=pid, task_id=state.get("batch_task_id"),
-                         node="batch_plan", role="Planner", resp=resp, error=resp.error)
+                         node="batch_plan", role="Planner", resp=resp, error=resp.error, messages=messages)
         if resp.error:
             return {"batch_failed": True, "error": resp.error}
     try:
@@ -313,7 +313,7 @@ def node_reflexion(state: BatchState) -> BatchState:
             resp = make_chain("audit", db=db, project_id=pid).generate(messages, json_mode=True,
                                                 max_tokens=nodes._MAX_TOKENS["reflexion"])
             nodes.record_run(db, project_id=pid, task_id=batch_task_id, node="reflexion",
-                             role="Reflexion", resp=resp, error=resp.error,
+                             role="Reflexion", resp=resp, error=resp.error, messages=messages,
                              detail={"findings": len(findings), "recurrences": recurrences})
             if resp.error:
                 return {"reflexion": {"error": resp.error}}

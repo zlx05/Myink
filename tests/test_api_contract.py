@@ -23,8 +23,15 @@ from myink.api.main import app
 # 模板形式（{project_id}）。
 PUBLIC_ENDPOINTS: list[tuple[str, str]] = [
     ("POST", "/internal/v1/auth/token"),
+    ("POST", "/internal/v1/auth/register"),
+    ("GET", "/internal/v1/auth/session"),
+    ("POST", "/internal/v1/auth/password"),
+    ("POST", "/internal/v1/auth/logout"),
+    ("GET", "/internal/v1/projects/{project_id}/access"),
+    ("GET", "/internal/v1/tasks/{task_id}/access"),
     ("GET", "/internal/v1/projects"),
     ("POST", "/internal/v1/projects"),
+    ("GET", "/internal/v1/projects/{project_id}/creation"),
     ("PUT", "/internal/v1/projects/{project_id}"),
     ("DELETE", "/internal/v1/projects/{project_id}"),
     ("GET", "/internal/v1/projects/{project_id}/chapters"),
@@ -106,7 +113,10 @@ def _schema_has_fields(schema: dict[str, Any], components: dict[str, Any]) -> bo
 
 
 def _response_schema(openapi: dict[str, Any], method: str, path: str) -> dict[str, Any]:
-    return openapi["paths"][path][method.lower()]["responses"]["200"]["content"]["application/json"]["schema"]
+    responses = openapi["paths"][path][method.lower()]["responses"]
+    success = [response for code, response in responses.items() if code.startswith("2")]
+    assert len(success) == 1, f"expected one success response for {method} {path}"
+    return success[0]["content"]["application/json"]["schema"]
 
 
 @pytest.mark.parametrize("method,path", PUBLIC_ENDPOINTS)

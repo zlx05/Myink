@@ -2,7 +2,7 @@
 
 面向长篇网络小说连续创作的多 Agent 智能创作系统。通过多 Agent 编排、审核路由、复盘沉淀与多级记忆召回，旨在减少长文中的人设不一致、战力崩坏、剧情前后矛盾、长上下文过载等问题，实现「规划 → 生成 → 校验 → 记忆沉淀」的完整创作闭环。
 
-当前定位：**本地演示与小范围试用的 MVP**。演示登录无密码，不能作为公网账户认证；Compose 默认只绑定本机。
+当前定位：**本地演示与小范围邀请试用的 MVP**。新账号必须使用服务端发放的邀请码注册；已有账号继续使用密码登录。作品、写作任务及实时事件按账号隔离。Compose 默认只绑定本机，公网部署仍需独立安全加固。
 
 ## 核心能力
 
@@ -50,13 +50,17 @@ Agent 只输出候选，由编排层处理落库。低风险候选可自动确�
 ```bash
 # 首次复制配置（Windows PowerShell 可用 Copy-Item）
 cp .env.example .env
+# 首次使用前填写强随机 JWT_SECRET（至少 32 字节）及独立 MODEL_CREDENTIAL_KEY
+# 已有数据库请先阅读 docs/AUTH.md 的无损升级步骤，不要直接更换旧密钥
 # 启动全部服务（PostgreSQL+pgvector / Redis / RabbitMQ / Python API / Worker / Go 网关）
 docker compose up -d --build
 ```
 
 访问 127.0.0.1:8080（网关静态托管前端，同源提供页面 + API + SSE）。
 
-- 复制配置后即可浏览界面；生成章节前在「环境配置」添加模型连接并指定角色
+- 配置密钥后，管理员用 `myink create-invite` 发放默认 7 天有效的一次性邀请码；受邀者在登录页注册
+- 旧账号（含 demo）没有默认密码，需管理员运行 `myink reset-password demo` 激活；详见 [账号与隔离说明](docs/AUTH.md)
+- 管理员可通过 `/admin` 只读查看全站作品、任务与节点指标；权限授予、观测边界和部署要求见 [管理面板说明](docs/ADMIN.md)。
 - 支持 OpenAI 兼容或 Anthropic 原生接口；未配置连接时不会回落内置模型
 - 向量召回默认关闭（`EMBED_ENABLED=0`），开启与模型下载见 [docs/DEPLOY.md](docs/DEPLOY.md)
 - 首次启动自动建表 + RLS + 示例数据，幂等可重复执行

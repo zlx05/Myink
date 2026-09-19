@@ -26,7 +26,7 @@ from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 
 from myink.config import settings
 from myink.db import new_session
-from myink.models import Task
+from myink.models import Project, Task
 from myink.workflow.runner import (
     finalize_chapter_review,
     generate_batch,
@@ -136,6 +136,8 @@ def _guard_write_order(project_id: str, seq: int, *, rewrite: bool = False) -> N
         proj = db.get(Project, uuid.UUID(project_id))
         if proj is None:
             return  # 项目不存在，让下游正常报错
+        if proj.creation_status not in {"ready", "legacy_ready"}:
+            raise ValueError("PROJECT_NOT_READY: 请先确认设定与整书大纲")
         max_seq = db.query(func.max(Chapter.chapter_seq)).filter(
             Chapter.project_id == proj.id).scalar()
         latest = None
@@ -451,8 +453,27 @@ def _run(body: dict, task_id: str, task_type: str, project_id: str) -> str:
     return "terminal"
 
 
+def valid_task_owner(body: dict) -> bool:
+    """Reject mismatched message identities before locks, SSE, or DB writes."""
+    try:
+        project_id = uuid.UUID(str(body.get("project_id")))
+        user_id = uuid.UUID(str(body.get("user_id")))
+        task_id = uuid.UUID(str(body.get("task_id")))
+    except (ValueError, TypeError, AttributeError):
+        return False
+    with new_session() as db:
+        project = db.get(Project, project_id)
+        if project is None or project.user_id != user_id:
+            return False
+        task = db.get(Task, task_id)
+        return task is None or task.project_id == project_id
+
+
 def process(body: dict, worker_id: str | None = None) -> str:
     """处理单条消息，返回 consumer 决策。body 为已 decode 的消息字段 dict。"""
+    if not valid_task_owner(body):
+        logger.warning("拒绝任务归属不匹配的消息: %s", body.get("task_id"))
+        return "skip"
     r = get_redis()
     task_id = body["task_id"]
     task_type = body["task_type"]

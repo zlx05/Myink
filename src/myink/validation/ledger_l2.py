@@ -193,6 +193,6 @@ def run_ledger_l2(session: Session, *, project_id, chapter_seq: int,
         except Exception as exc:  # noqa: BLE001 —— 解析失败同 LLM 失败（§6.12）
             error = f"ledger_l2 解析失败: {exc}"
     nodes.record_run(session, project_id=str(project_id), task_id=task_id, node="validate",
-                     role="LedgerL2", resp=resp, error=error,
+                     role="LedgerL2", resp=resp, error=error, messages=messages,
                      detail={"l2_judgments": len(judgments), "l2_findings": len(findings)})
     return findings

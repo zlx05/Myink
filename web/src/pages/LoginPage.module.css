@@ -15,8 +15,33 @@
 }
 
 .sub {
-  margin: 0;
+  margin: var(--space-2) 0 0;
   color: var(--ink-subtle);
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+}
+
+.tab,
+.tabActive {
+  min-height: 38px;
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--ink-muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.tabActive {
+  color: var(--ink);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
 }
 
 .field {

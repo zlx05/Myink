@@ -3,6 +3,7 @@
 
 import type {
   AuthResponse,
+  AuthSessionResponse,
   CandidateActionResponse,
   CharacterCard,
   CharacterStateChange,
@@ -29,11 +30,13 @@ import type {
   ModelListResult,
   ModelProbeRequest,
   Project,
+  ProjectCreation,
   ProjectSettings,
   BookOutlineResponse,
   OutlineConfirmBody,
   OutlineDraft,
   OutlineDraftBody,
+  OkResponse,
   RankingsConfigInput,
   RankingsProbeRequest,
   RankingsProbeResult,
@@ -75,42 +78,115 @@ export class ApiError extends Error {
 
 export { GATE_CODES, formatApiError, formatErrorText } from './apiError'
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+interface RequestOptions {
+  token?: string | null
+  signal?: AbortSignal
+  dispatchAuthFailure?: boolean
+}
+
+const authenticatedRequests = new Map<string, Set<AbortController>>()
+
+export function abortRequestsForToken(token: string): void {
+  const controllers = authenticatedRequests.get(token)
+  if (!controllers) return
+  for (const controller of controllers) controller.abort()
+  authenticatedRequests.delete(token)
+}
+
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  options?: RequestOptions,
+): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
-  const token = getToken()
+  const token = options?.token === undefined ? getToken() : options.token
   if (token) headers.Authorization = `Bearer ${token}`
   if (body !== undefined) headers['Content-Type'] = 'application/json'
 
-  let res: Response
+  const controller = new AbortController()
+  const abortFromCaller = () => controller.abort()
+  if (options?.signal?.aborted) controller.abort()
+  options?.signal?.addEventListener('abort', abortFromCaller, { once: true })
+  if (token) {
+    const pending = authenticatedRequests.get(token) ?? new Set<AbortController>()
+    pending.add(controller)
+    authenticatedRequests.set(token, pending)
+  }
+
   try {
-    res = await fetch(BASE + path, {
+    const res = await fetch(BASE + path, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
     })
-  } catch {
-    throw new ApiError(0, 'network_error', null)
-  }
 
-  if (!res.ok) {
-    let parsed: unknown = null
-    try {
-      parsed = await res.json()
-    } catch {
-      /* 非 JSON 响应：保留原始状态 */
+    if (!res.ok) {
+      let parsed: unknown = null
+      try {
+        parsed = await res.json()
+      } catch {
+        /* 非 JSON 响应：保留原始状态 */
+      }
+      if (controller.signal.aborted || (token && getToken() !== token)) {
+        throw new ApiError(0, 'request_aborted', null)
+      }
+      const errorBody = parsed as { error?: string; detail?: unknown } | null
+      const code = errorBody?.error
+        ?? (typeof errorBody?.detail === 'string' ? errorBody.detail : res.statusText)
+      if (res.status === 401 && token && options?.dispatchAuthFailure !== false) {
+        dispatchUnauthorized(token)
+      }
+      throw new ApiError(res.status, code, parsed)
     }
-    const errorBody = parsed as { error?: string; detail?: unknown } | null
-    const code = errorBody?.error
-      ?? (typeof errorBody?.detail === 'string' ? errorBody.detail : res.statusText)
-    if (res.status === 401) dispatchUnauthorized()
-    throw new ApiError(res.status, code, parsed)
+
+    const parsed = (await res.json()) as T
+    if (controller.signal.aborted || (token && getToken() !== token)) {
+      throw new ApiError(0, 'request_aborted', null)
+    }
+    return parsed
+  } catch (err) {
+    if (err instanceof ApiError) throw err
+    if (controller.signal.aborted) throw new ApiError(0, 'request_aborted', null)
+    throw new ApiError(0, 'network_error', null)
+  } finally {
+    options?.signal?.removeEventListener('abort', abortFromCaller)
+    if (token) {
+      const pending = authenticatedRequests.get(token)
+      pending?.delete(controller)
+      if (pending?.size === 0) authenticatedRequests.delete(token)
+    }
   }
-  return (await res.json()) as T
+}
+
+// 管理面板等独立模块复用同一认证、账号切换中止与 401 分发语义。
+export function authenticatedGet<T>(path: string, token: string, signal?: AbortSignal): Promise<T> {
+  return request<T>('GET', path, undefined, { token, signal })
 }
 
 export const api = {
-  login: (username: string) =>
-    request<AuthResponse>('POST', '/auth/token', { username }),
+  login: (username: string, password: string) =>
+    request<AuthResponse>('POST', '/auth/token', { username, password }, { token: null }),
+
+  register: (username: string, password: string, invitationCode: string) =>
+    request<AuthResponse>('POST', '/auth/register', {
+      username,
+      password,
+      invitation_code: invitationCode,
+    }, { token: null }),
+
+  getSession: (token: string, signal?: AbortSignal) =>
+    request<AuthSessionResponse>('GET', '/auth/session', undefined, { token, signal }),
+
+  changePassword: (currentPassword: string, newPassword: string, token?: string) =>
+    request<OkResponse>('POST', '/auth/password', {
+      current_password: currentPassword,
+      new_password: newPassword,
+    }, { token, dispatchAuthFailure: false }),
+
+  logout: (token?: string, signal?: AbortSignal) =>
+    request<OkResponse>('POST', '/auth/logout', undefined, { token, signal }),
 
   listProjects: () => request<Project[]>('GET', '/projects'),
 
@@ -262,6 +338,7 @@ export const api = {
 
   // 建书向导 + 设定浏览（§7.11：创建作品 / 设定草稿 / 确认落库 / 世界观 / 人物卡片）。
   createProject: (body: CreateProjectBody) => request<Project>('POST', '/projects', body),
+  getCreation: (pid: string) => request<ProjectCreation>('GET', `/projects/${encodeURIComponent(pid)}/creation`),
 
   // 作品信息更新（§6.9 每章目标字数可配）：未传字段不改，显式 null 置空。
   updateProject: (pid: string, body: UpdateProjectBody) =>

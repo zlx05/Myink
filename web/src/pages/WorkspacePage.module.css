@@ -168,6 +168,51 @@
 
 @media (max-width: 1159px) {
   .wrap {
-    overflow-x: auto;
+    min-width: 0;
+    height: auto;
+    min-height: 100%;
+    display: grid;
+    grid-template-columns: 140px 170px minmax(280px, 1fr);
+    grid-template-rows: minmax(440px, 75vh) auto;
+  }
+  .wrap > aside:first-child {
+    grid-row: 1 / -1;
+    width: auto;
+    height: auto;
+  }
+  .chapters {
+    width: auto;
+    margin: 12px 0 12px 8px;
+  }
+  .main {
+    margin: 12px;
+  }
+  .right {
+    grid-column: 2 / -1;
+    width: auto;
+    margin: 0 12px 12px 8px;
+    overflow-y: visible;
+  }
+}
+
+@media (max-width: 650px) {
+  .wrap {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+  .wrap > aside:first-child {
+    grid-row: auto;
+    max-height: 220px;
+  }
+  .chapters {
+    max-height: 240px;
+    margin: 12px;
+  }
+  .main {
+    min-height: 480px;
+  }
+  .right {
+    grid-column: 1;
+    margin: 0 12px 12px;
   }
 }

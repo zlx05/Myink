@@ -22,7 +22,7 @@
 | 草稿恢复和异步保存 | `web/src/components/ChapterEditor.test.tsx` | 草稿按账号/章节隔离，存于当前标签页，关闭前需服务器保存 |
 | 提示词预算 | `context_budget.py`、`tests/test_context_budget.py` | 完整消息估算，保留硬约束；不是精确 tokenizer |
 | 队列与恢复 | `worker/`、`gateway/internal/queue/`、`tests/test_multiprocess.py` | RabbitMQ 管任务，Redis 管锁/限流/SSE；不宣称 exactly-once |
-| 租户隔离 | `db.py`、`api/auth.py`、`tests/test_auth.py` | RLS 与归属校验已实现；演示用户名登录不等于正式身份认证 |
+| 租户隔离 | `db.py`、`api/auth.py`、`tests/test_auth.py`、`tests/test_user_isolation.py` | 密码注册/登录 + 会话撤销 + RLS/归属校验；覆盖书籍、写作任务与 SSE；配置及边界见 `AUTH.md` |
 | 契约一致性 | `spec/api-openapi.json`、Python/Go 契约测试 | 请求/响应修改必须同步契约与消费者 |
 
 ## 不能混用的指标

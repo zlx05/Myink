@@ -10,11 +10,13 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
 
 import typer
 from rich.console import Console
 from rich.table import Table
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
 from myink.db import get_engine, tenant_session
@@ -27,13 +29,20 @@ console = Console()
 
 
 @app.command()
-def init() -> None:
+def init(
+    no_seed: Annotated[bool, typer.Option(
+        "--no-seed",
+        help="Run additive initialization without creating demo or sample books.",
+    )] = False,
+) -> None:
     """初始化数据库：建表 + RLS + demo 种子数据。"""
     from myink.db import (enable_row_level_security, ensure_chapter_versions,
                           ensure_genre_pack, ensure_global_audit_reports,
-                          ensure_legacy_schema_cleanup, ensure_memory_candidate_kinds,
+                          ensure_memory_candidate_kinds, ensure_project_creation,
                           ensure_storage_indexes, ensure_unique_constraints,
-                          ensure_user_environment, ensure_user_tier, get_admin_engine)
+                          ensure_user_auth_schema, ensure_user_environment,
+                          ensure_user_role, ensure_user_tier, get_admin_engine)
+    from myink.invitations import ensure_invitation_schema
     from myink.seed import create_sample_books
 
     # 建表 + RLS 走超级用户（owner）连接；业务运行走 myink_app（NOBYPASSRLS，受 RLS 约束）
@@ -42,13 +51,19 @@ def init() -> None:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
     console.print("[bold]1/3[/] 建表（PostgreSQL + pgvector）...")
     Base.metadata.create_all(get_admin_engine())
+    ensure_project_creation()
     console.print("[bold]1.5/3[/] 补齐唯一约束 + 组合索引/HNSW（幂等，评审 A6/存储建议）...")
     ensure_unique_constraints()
     ensure_storage_indexes()
     console.print("[bold]1.55/3[/] 补齐 users.tier（阶段 6 VIP 优先级，幂等）...")
     ensure_user_tier()
+    console.print("[bold]1.555/3[/] 补齐 users.role（user/admin 独立权限，幂等）...")
+    ensure_user_role()
     console.print("[bold]1.56/3[/] 补齐 users.environment（账号级环境配置，幂等）...")
     ensure_user_environment()
+    console.print("[bold]1.565/3[/] 补齐账号密码字段与规范用户名唯一索引（幂等）...")
+    ensure_user_auth_schema()
+    ensure_invitation_schema()
     console.print("[bold]1.57/3[/] 补齐 project_settings.genre_pack（本书题材包，幂等）...")
     ensure_genre_pack()
     console.print("[bold]1.6/3[/] 补齐记忆候选 kind 枚举（memory_removal，阶段 3 编辑校正）...")
@@ -57,15 +72,144 @@ def init() -> None:
     ensure_global_audit_reports()
     console.print("[bold]1.8/3[/] 补齐章节版本表（chapter_versions，阶段 4 历史/回退）...")
     ensure_chapter_versions()
-    console.print("[bold]1.85/3[/] 清理已死的表/列（老库遗留，幂等）...")
-    ensure_legacy_schema_cleanup()
+    # Startup upgrades are additive. Destructive legacy cleanup must never run
+    # automatically when deploying authentication onto an existing book database.
     console.print("[bold]2/3[/] 启用 RLS 主强制（FORCE ROW LEVEL SECURITY）...")
     enable_row_level_security()
+    if no_seed:
+        console.print("[bold]3/3[/] 跳过 demo 与示例书种子...")
+        console.print("[green]✓[/] 初始化完成（无种子数据）")
+        return
     console.print("[bold]3/3[/] 写入 demo 种子（《九州问天》+ 示例书）...")
     pid = create_demo_project()
     new_books = create_sample_books()
     console.print(f"[green]✓[/] 初始化完成。demo project_id = [bold]{pid}[/]"
                   + (f"；新增示例书 {len(new_books)} 本（多书展示）" if new_books else ""))
+
+
+@app.command("auth-upgrade")
+def auth_upgrade() -> None:
+    """Safely add account-authentication schema without legacy cleanup."""
+    from myink.db import ensure_user_auth_schema, ensure_user_role
+    from myink.invitations import ensure_invitation_schema
+    from myink.models.admin import ensure_admin_schema
+
+    ensure_user_auth_schema()
+    ensure_user_role()
+    ensure_invitation_schema()
+    ensure_admin_schema()
+    console.print("[green]OK[/] 账号认证结构已安全升级；旧账号仍需重设密码")
+
+
+@app.command("set-role")
+def set_role(username: str, role: str) -> None:
+    """Set an existing account's user/admin role and revoke its sessions."""
+    from myink.api.auth import normalize_username
+    from myink.db import new_session
+    from myink.models import User
+
+    if role not in {"user", "admin"}:
+        console.print("[red]角色必须为 user 或 admin[/]")
+        raise typer.Exit(1)
+    try:
+        canonical = normalize_username(username)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1)
+    with new_session() as db:
+        result = db.execute(
+            update(User)
+            .where(func.lower(func.btrim(User.username)) == canonical)
+            .values(role=role, auth_version=User.auth_version + 1)
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            console.print("[red]账号不存在[/]")
+            raise typer.Exit(1)
+        db.commit()
+    console.print(f"[green]OK[/] {canonical} 角色已设为 {role}，旧 token 已全部失效")
+
+
+@app.command("create-invite")
+def create_invite(
+    expires_days: int = typer.Option(7, min=1, help="Days until the invitation expires."),
+    max_redemptions: int = typer.Option(1, min=1, help="Maximum successful registrations."),
+) -> None:
+    """Create an invitation and print its plaintext exactly once."""
+    from myink.db import new_session
+    from myink.invitations import create_invitation
+
+    expires_at = datetime.now(timezone.utc) + timedelta(days=expires_days)
+    with new_session() as db:
+        invitation, token = create_invitation(
+            db,
+            expires_at=expires_at,
+            max_redemptions=max_redemptions,
+        )
+        db.commit()
+    console.print(f"Invitation id: {invitation.id}")
+    console.print(f"Expires at: {invitation.expires_at.isoformat()}")
+    console.print(f"Maximum redemptions: {invitation.max_redemptions}")
+    console.print(f"Invitation code: {token}")
+
+
+@app.command("revoke-invite")
+def revoke_invite(invitation_id: str) -> None:
+    """Revoke an invitation by its non-secret identifier."""
+    from myink.db import new_session
+    from myink.invitations import revoke_invitation
+
+    try:
+        parsed_id = uuid.UUID(invitation_id)
+    except ValueError:
+        console.print("[red]Invalid invitation id[/]")
+        raise typer.Exit(1)
+    with new_session() as db:
+        if not revoke_invitation(db, parsed_id):
+            console.print("[red]Invitation not found[/]")
+            raise typer.Exit(1)
+        db.commit()
+    console.print(f"[green]OK[/] Invitation revoked: {parsed_id}")
+
+
+@app.command("reset-password")
+def reset_password(username: str) -> None:
+    """Interactively reset one local account password and revoke its tokens."""
+    from myink.api.auth import normalize_username
+    from myink.db import new_session
+    from myink.models import User
+    from myink.passwords import hash_password, validate_password
+
+    try:
+        canonical = normalize_username(username)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1)
+    password = typer.prompt("新密码", hide_input=True, confirmation_prompt=True)
+    try:
+        validate_password(password)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1)
+    password_hash = hash_password(password)
+    with new_session() as db:
+        user_id = db.scalar(
+            select(User.id).where(func.lower(func.btrim(User.username)) == canonical)
+        )
+        if user_id is None:
+            console.print("[red]账号不存在[/]")
+            raise typer.Exit(1)
+        result = db.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(password_hash=password_hash, auth_version=User.auth_version + 1)
+        )
+        if result.rowcount != 1:
+            db.rollback()
+            console.print("[red]密码重设失败[/]")
+            raise typer.Exit(1)
+        db.commit()
+    console.print("[green]OK[/] 密码已重设，该账号的旧 token 已全部失效")
 
 
 @app.command()

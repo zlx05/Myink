@@ -28,6 +28,10 @@
   gap: var(--space-4);
 }
 
+.sectionTitle {
+  margin: 24px 0 16px;
+}
+
 .card {
   display: flex;
   flex-direction: column;

@@ -110,7 +110,7 @@ def extract_style_profile(samples: list[str], stats: dict, *,
         if project_id is None:
             raise ValueError("db 非 None 时必须提供 project_id（agent_runs 归属）")
         nodes.record_run(db, project_id=project_id, task_id=None, node="style_extract",
-                         role="StyleExtract", resp=resp, error=resp.error,
+                         role="StyleExtract", resp=resp, error=resp.error, messages=messages,
                          detail={"n_samples": len(samples)})
     if resp.error:
         return {}, resp.error

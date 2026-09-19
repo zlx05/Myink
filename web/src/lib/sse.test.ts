@@ -3,8 +3,10 @@
 import { dispatchUnauthorized } from './token'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const tokenState = vi.hoisted(() => ({ value: 'test-token' }))
+
 vi.mock('../lib/token', () => ({
-  getToken: () => 'test-token',
+  getToken: () => tokenState.value,
   dispatchUnauthorized: vi.fn(),
 }))
 
@@ -92,6 +94,7 @@ describe('openSSE 流行为', () => {
   const mockDispatch = vi.mocked(dispatchUnauthorized)
 
   beforeEach(() => {
+    tokenState.value = 'test-token'
     mockDispatch.mockClear()
   })
   afterEach(() => {
@@ -168,7 +171,19 @@ describe('openSSE 流行为', () => {
     globalThis.fetch = vi.fn().mockResolvedValue(new Response('', { status: 401 }))
     const result = await openSSE('/x', () => {})
     expect(result.reason).toBe('unauthorized')
-    expect(mockDispatch).toHaveBeenCalledTimes(1)
+    expect(mockDispatch).toHaveBeenCalledWith('test-token')
+  })
+
+  it('discards a delayed 401 from the previous token without signing out the new account', async () => {
+    let resolveFetch!: (response: Response) => void
+    globalThis.fetch = vi.fn().mockReturnValue(new Promise((resolve) => { resolveFetch = resolve }))
+
+    const pending = openSSE('/x', () => {})
+    tokenState.value = 'new-token'
+    resolveFetch(new Response('', { status: 401 }))
+
+    await expect(pending).resolves.toEqual({ reason: 'aborted' })
+    expect(mockDispatch).not.toHaveBeenCalled()
   })
 
   it('last_event_id 参数拼接进 URL（查询参数追加）', async () => {

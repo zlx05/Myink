@@ -3,14 +3,17 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"myink/gateway/internal/pyapi"
 	"myink/gateway/internal/redis"
 	"myink/gateway/internal/sse"
 )
@@ -22,15 +25,19 @@ const sseMaxDuration = 30 * time.Minute
 var errTerminal = errors.New("terminal_event")
 
 type SSEHandler struct {
-	r *redis.Client
+	r  *redis.Client
+	py *pyapi.Client
 }
 
-func NewSSEHandler(r *redis.Client) *SSEHandler { return &SSEHandler{r: r} }
+func NewSSEHandler(r *redis.Client, py *pyapi.Client) *SSEHandler { return &SSEHandler{r: r, py: py} }
 
 // Stream 订阅任务进度事件并转发 SSE 帧。
 // GET /api/v1/tasks/:task_id/events?last_event_id=xxx
 func (h *SSEHandler) Stream(c *gin.Context) {
 	taskID := c.Param("task_id")
+	if !checkAccess(c, h.py, "tasks", taskID) {
+		return
+	}
 	after := c.Query("last_event_id")
 	if after == "" {
 		after = c.GetHeader("Last-Event-ID")
@@ -47,12 +54,19 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 
 	// 强制响应头：SSE 必须 text/event-stream + 关缓冲
 	c.Header("Content-Type", "text/event-stream")
-	c.Header("Cache-Control", "no-cache")
+	c.Header("Cache-Control", "no-store")
 	c.Header("Connection", "keep-alive")
 	c.Header("X-Accel-Buffering", "no")
 	c.Writer.Flush()
 
-	ctx, cancel := context.WithTimeout(c.Request.Context(), sseMaxDuration)
+	deadline := time.Now().Add(sseMaxDuration)
+	if value, exists := c.Get("auth_expires"); exists {
+		if expires, ok := value.(time.Time); ok && expires.Before(deadline) {
+			deadline = expires
+		}
+	}
+	ctx, cancel := context.WithDeadline(c.Request.Context(), deadline)
+	authorization, userID := c.GetHeader("Authorization"), GetUserID(c)
 
 	// ResponseWriter 不允许并发写。心跳和模型片段共用同一把锁，避免生成超过 15 秒时
 	// 两个 goroutine 交叉写坏 SSE 帧，造成浏览器只能等重连后一次性看到正文。
@@ -60,6 +74,9 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 	writeFrame := func(frame string) error {
 		writeMu.Lock()
 		defer writeMu.Unlock()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		_, err := fmt.Fprint(c.Writer, frame)
 		c.Writer.Flush()
 		return err
@@ -75,6 +92,10 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				if !h.validSession(ctx, authorization, userID) {
+					cancel()
+					return
+				}
 				_ = writeFrame(": keepalive\n\n")
 			}
 		}
@@ -93,6 +114,8 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 		return werr
 	})
 	switch {
+	case ctx.Err() != nil:
+		return // No JSON error frames after SSE headers have been committed.
 	case err == nil || errors.Is(err, errTerminal):
 		// 正常结束（终态帧已发 / 客户端断开）
 		return
@@ -102,6 +125,21 @@ func (h *SSEHandler) Stream(c *gin.Context) {
 	default:
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "sse_read_failed"})
 	}
+}
+
+func (h *SSEHandler) validSession(ctx context.Context, authorization, userID string) bool {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	header := http.Header{"Authorization": []string{authorization}}
+	resp, err := h.py.Forward(ctx, http.MethodGet, "/internal/v1/auth/session", nil, header, nil)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	var session struct {
+		UserID string `json:"user_id"`
+	}
+	return resp.StatusCode == 200 && json.NewDecoder(io.LimitReader(resp.Body, 65536)).Decode(&session) == nil && session.UserID == userID
 }
 
 // isTerminal 终态判定：worker 终态事件是 event=status + status∈{done,failed,awaiting_review}。

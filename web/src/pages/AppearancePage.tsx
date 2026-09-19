@@ -688,7 +688,8 @@ export default function AppearancePage() {
             <div className={styles.themeEditor}>
               <div className={styles.themeEditorCol}>
                 <div className={styles.themeField}>
-                  <span className={styles.fieldLabel}>字体</span>
+                  <span className={styles.fieldLabel}>正文字体</span>
+                  <p className={styles.hint}>界面使用系统清晰字体；这里仅调整正文。普通显示器建议黑体，也可调大字号。</p>
                   <div className={styles.themeChoiceRow}>
                     {THEME_FONTS.map((item) => (
                       <button

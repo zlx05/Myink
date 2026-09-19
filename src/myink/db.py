@@ -32,7 +32,8 @@ _engine: Engine = create_engine(
     pool_pre_ping=True,  # 回收失效连接
 )
 
-# 超级用户 DDL 连接（仅 init/迁移/RLS，业务不碰；超级用户永远绕过 RLS，不能用于业务）
+# 管理连接：DDL，以及 require_admin 之后 SET TRANSACTION READ ONLY 的报告查询。
+# 普通业务/worker 不使用（超级用户绕过 RLS）；报告角色的部署限制见 routes_admin.py。
 _admin_engine: Engine = create_engine(
     normalize_localhost_database_url(settings.admin_database_url), pool_pre_ping=True)
 
@@ -177,6 +178,23 @@ def ensure_storage_indexes() -> None:
                 conn.execute(_text(ddl))
 
 
+def ensure_project_creation() -> None:
+    """Additive upgrade; classify abandoned empty books only on the first upgrade."""
+    with get_admin_engine().begin() as conn:
+        existed = conn.scalar(text("SELECT EXISTS (SELECT 1 FROM information_schema.columns "
+                                   "WHERE table_schema=current_schema() AND table_name='projects' "
+                                   "AND column_name='creation_status')"))
+        conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS creation_status "
+                          "VARCHAR(24) NOT NULL DEFAULT 'legacy_ready'"))
+        conn.execute(text("ALTER TABLE projects ADD COLUMN IF NOT EXISTS creation_context "
+                          "JSON NOT NULL DEFAULT '{}'"))
+        if not existed:
+            conn.execute(text("UPDATE projects p SET creation_status='draft' "
+                              "WHERE p.current_chapter=0 "
+                              "AND NOT EXISTS (SELECT 1 FROM chapters c WHERE c.project_id=p.id) "
+                              "AND NOT EXISTS (SELECT 1 FROM volume_outlines v WHERE v.project_id=p.id)"))
+
+
 def ensure_user_tier() -> None:
     """为老库补齐 users.tier（幂等，阶段 6 VIP 优先级）。
 
@@ -188,6 +206,28 @@ def ensure_user_tier() -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS tier VARCHAR(16) "
             "NOT NULL DEFAULT 'normal'"
         ))
+
+
+def ensure_user_role() -> None:
+    """Add the independent user/admin role to existing installations."""
+    with _admin_engine.begin() as conn:
+        conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(16) "
+            "NOT NULL DEFAULT 'user'"
+        ))
+        conn.execute(text("""
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                    WHERE conname = 'ck_users_user_role'
+                      AND conrelid = 'users'::regclass
+                ) THEN
+                    ALTER TABLE users ADD CONSTRAINT ck_users_user_role
+                    CHECK (role IN ('user', 'admin'));
+                END IF;
+            END $$;
+        """))
 
 
 def ensure_genre_pack() -> None:
@@ -210,6 +250,46 @@ def ensure_user_environment() -> None:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS environment JSONB "
             "NOT NULL DEFAULT '{}'::jsonb"
         ))
+
+
+def ensure_user_auth_schema() -> None:
+    """Add password authentication columns and canonical username uniqueness.
+
+    This is deliberately separate from ``init``'s historical cleanup so an existing
+    installation can upgrade accounts without dropping or rewriting user content.
+    Legacy accounts remain passwordless until an administrator resets their password.
+    If trimmed, case-folded legacy names collide, the whole transaction fails with an
+    actionable error; no account is merged, renamed, or deleted.
+    """
+    with _admin_engine.begin() as conn:
+        _upgrade_user_auth_schema(conn)
+
+
+def _upgrade_user_auth_schema(conn) -> None:
+    """Run the auth upgrade in the caller's transaction (also enables safe tests)."""
+    conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT"))
+    conn.execute(text(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_version INTEGER "
+        "NOT NULL DEFAULT 1"
+    ))
+    collisions = conn.execute(text("""
+        SELECT lower(btrim(username)) AS canonical
+        FROM users
+        GROUP BY lower(btrim(username))
+        HAVING count(*) > 1
+        ORDER BY canonical
+        LIMIT 10
+    """)).scalars().all()
+    if collisions:
+        joined = ", ".join(repr(name) for name in collisions)
+        raise RuntimeError(
+            "users contain duplicate normalized usernames; resolve them manually "
+            f"before retrying auth-upgrade: {joined}"
+        )
+    conn.execute(text(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_users_username_canonical "
+        "ON users ((lower(btrim(username))))"
+    ))
 
 
 def ensure_unique_constraints() -> None:

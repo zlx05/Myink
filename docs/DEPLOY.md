@@ -1,6 +1,6 @@
 # Myink 本地部署与验证
 
-当前交付目标是本地演示。登录使用已有用户名，无密码验证；`APP_ENV=prod` 会拒绝演示 token 签发。公网账户、模型密钥用户级 RLS 与登录防撞库见 [PROD-CREDENTIALS.md](PROD-CREDENTIALS.md)，上线时按该方案做，不要把本文演示配置原样暴露公网。
+当前支持密码注册、登录、改密、退出与账号间作品/任务隔离。先阅读 [账号配置与无损升级](AUTH.md)。公网密钥存储加固等后续设计见 [PROD-CREDENTIALS.md](PROD-CREDENTIALS.md)，不要把本文本地配置原样暴露公网。
 
 ## 启动应用
 
@@ -8,12 +8,14 @@
 
 ```powershell
 Copy-Item .env.example .env  # 仅首次执行，已有 .env 时保留原配置
+# 填写强随机 JWT_SECRET（至少 32 字节）和独立稳定的 MODEL_CREDENTIAL_KEY
+# 已有模型密钥时务必按 AUTH.md 保留原加密密钥，再更换 JWT_SECRET
 # 生成章节前在前端「环境配置」填写模型 Key，不要写进 .env
 docker compose up -d --build
 docker compose ps
 ```
 
-打开 http://localhost:8080 ，使用 `demo` 进入。不填写有效模型密钥也可以浏览已有作品。
+打开 http://localhost:8080 ，注册自己的账号。旧 `demo` 账号需管理员通过 `myink reset-password demo` 设置密码后才能访问其示例书，不存在公开默认密码。
 
 如需让用户在项目设置中保存自定义模型 API Key，请在首次使用前设置稳定的
 `MODEL_CREDENTIAL_KEY`。该值用于加密数据库中的模型密钥，部署后修改会使旧密钥无法解密；
@@ -30,7 +32,7 @@ Anthropic Messages 原生接口，请按服务商要求填写包含版本前缀�
 
 Python API 的 8100 端口仅在容器网络内开放。所有宿主机端口默认绑定回环地址。不要将这份演示配置原样开放到公网。
 
-首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS、必要补丁和演示数据。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
+首次启动由 `docker/initdb/01-roles.sql` 创建非超级用户 `myink_app`；API 启动时运行 `myink init`，创建表、RLS、必要补丁和演示数据；启动不再自动清理遗留表/列。单独升级认证字段可用 `myink auth-upgrade`，不重命名旧账号、不迁移作品归属。已有数据库升级目前使用幂等补丁，尚无完整的 Alembic 版本迁移链。
 
 ```bash
 docker compose logs -f myink-api myink-worker myink-gateway
@@ -95,4 +97,4 @@ Compose 默认 `EMBED_ENABLED=0`，关闭向量腿但仍可使用关系与关键
 
 ## 仍需完成的生产工作
 
-正式身份验证、版本化数据库迁移、备份与恢复演练、集中监控和容量测试仍在后续范围。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。
+HTTPS/可信反向代理、模型凭据用户级数据库权限加固、版本化数据库迁移、备份与恢复演练、集中监控和容量测试仍在后续范围。当前没有生产可用性或真实小说质量的保证；演示应使用已验证的机制与测试结果描述能力。

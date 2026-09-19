@@ -109,7 +109,8 @@ it('fades the editor paper and the selections to the chrome opacity too', () => 
   expect(cssVar('--accent-soft')).toBe('rgba(159, 216, 173, 0.24)')
   expect(cssVar('--line')).toBe('rgba(63, 58, 54, 0.08)')
   expect(cssVar('--font-editor')).toContain('Kaiti')
-  expect(cssVar('--font-ui')).toContain('Kaiti')
+  expect(cssVar('--font-ui')).toContain('sans-serif')
+  expect(cssVar('--font-ui')).not.toContain('Kaiti')
   expect(cssVar('--text-editor')).toBe('19px')
 })
 
@@ -120,7 +121,7 @@ it('gives the official themes the same font and opacity knobs', () => {
   expect(cssVar('--editor')).toBe('rgba(24, 24, 24, 0.4)')
   expect(cssVar('--accent-soft')).toBe('rgba(30, 42, 34, 0.4)')
   expect(cssVar('--font-editor')).toContain('Heiti')
-  expect(cssVar('--font-ui')).toContain('Heiti')
+  expect(cssVar('--font-ui')).toContain('Microsoft YaHei UI')
   expect(cssVar('--text-editor')).toBe('21px')
 
   // 换回纸感：夜间的内联底色必须清掉，否则会盖住样式表
@@ -135,8 +136,8 @@ it('leaves the official themes on the stylesheet at full opacity', () => {
   expect(cssVar('--editor')).toBe('')
   expect(cssVar('--line')).toBe('')
   // 只有排版变量会被写上：字号和 tokens.css 原值一致，字体按选中的档位整页生效
-  expect(cssVar('--font-ui')).toBe(THEME_FONTS[0].css)
-  expect(cssVar('--font-editor')).toBe(THEME_FONTS[0].css)
+  expect(cssVar('--font-ui')).toContain('sans-serif')
+  expect(cssVar('--font-editor')).toBe(THEME_FONTS.find((font) => font.id === 'hei')?.css)
   expect(cssVar('--text-editor')).toBe('17px')
 })
 
@@ -147,6 +148,15 @@ it('keeps font and opacity at the account level instead of inside a preset', () 
 
   localStorage.setItem(STYLE_STORAGE_KEY, '{"chromeOpacity":900,"font":"comic","fontSize":"xxl"}')
   expect(readThemeStyle()).toEqual(DEFAULT_THEME_STYLE)
+})
+
+it('keeps a saved serif reading preference without applying it to small UI text', () => {
+  writeThemeStyle({ font: 'song', fontSize: 'm', chromeOpacity: 100 })
+  applyTheme('paper', undefined, readThemeStyle())
+  expect(cssVar('--font-editor')).toContain('SimSun')
+  expect(cssVar('--font-ui')).toContain('sans-serif')
+  expect(cssVar('--font-ui')).not.toContain('SimSun')
+  expect(readThemeStyle().font).toBe('song')
 })
 
 it('applies a wallpaper only as a CSS image variable', () => {

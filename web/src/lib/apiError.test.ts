@@ -10,6 +10,11 @@ it('maps gateway codes and HTTP status to Chinese', () => {
   expect(formatApiError(new ApiError(500, '500', null))).toBe('服务器出错，请稍后重试')
   expect(formatApiError(new ApiError(404, 'not_found', null))).toBe('未找到相关内容')
   expect(formatErrorText('', 429)).toBe('请求过于频繁或额度已用完，请稍后再试')
+  expect(formatErrorText('INVITATION_REQUIRED')).toBe('请输入邀请码')
+  expect(formatErrorText('INVITATION_INVALID')).toBe('邀请码无效')
+  expect(formatErrorText('INVITATION_EXPIRED')).toBe('邀请码已过期')
+  expect(formatErrorText('INVITATION_REVOKED')).toBe('邀请码已被撤销')
+  expect(formatErrorText('INVITATION_USED')).toBe('邀请码已用完')
 })
 
 it('maps model authentication failures to Chinese', () => {

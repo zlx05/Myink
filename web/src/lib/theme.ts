@@ -29,11 +29,14 @@ export type CustomTokenKey = (typeof CUSTOM_TOKEN_FIELDS)[number]['key']
 export type ThemeFont = 'song' | 'kai' | 'hei'
 export type ThemeFontSize = 's' | 'm' | 'l' | 'xl'
 
+// UI 字体独立于正文偏好，避免小字号宋体在 Windows 普通 DPI 屏幕上发虚。
+export const UI_FONT = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif"
+
 export const THEME_FONTS: ReadonlyArray<{ id: ThemeFont; label: string; css: string }> = [
   // 宋体这条与 tokens.css 里 --font-editor 的原值一致：默认档位下不改变任何主题的排版
   { id: 'song', label: '宋体', css: "Georgia, 'Songti SC', 'SimSun', 'Noto Serif SC', serif" },
   { id: 'kai', label: '楷体', css: "'Kaiti SC', 'STKaiti', 'KaiTi', 'Noto Serif SC', serif" },
-  { id: 'hei', label: '黑体', css: "'Heiti SC', 'STHeiti', 'PingFang SC', 'SimHei', 'Microsoft YaHei', sans-serif" },
+  { id: 'hei', label: '黑体', css: "'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Heiti SC', sans-serif" },
 ]
 
 export const THEME_FONT_SIZES: ReadonlyArray<{
@@ -107,7 +110,7 @@ export const DEFAULT_CUSTOM_TOKENS: CustomThemeTokens = {
 // 100 表示原样不透明；往下拉是把每一层等比调透，见 applyTheme
 export const DEFAULT_THEME_STYLE: ThemeStyle = {
   chromeOpacity: 100,
-  font: 'song',
+  font: 'hei',
   fontSize: 'm',
 }
 
@@ -493,11 +496,11 @@ function fadeColor(color: string, alpha: number): string | null {
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${round2(rgb.a * alpha)})`
 }
 
-// 字体与字号对所有主题都生效（含官方三套）；默认档位与 tokens.css 原值一致，等于不改
+// 正文字体与界面字体分离；字号仍对所有主题生效。
 function applyTypography(root: HTMLElement, style: ThemeStyle): void {
-  const face = THEME_FONTS.find((item) => item.id === style.font) ?? THEME_FONTS[0]
+  const face = THEME_FONTS.find((item) => item.id === style.font) ?? THEME_FONTS[2]
   const size = THEME_FONT_SIZES.find((item) => item.id === style.fontSize) ?? THEME_FONT_SIZES[1]
-  root.style.setProperty('--font-ui', face.css)
+  root.style.setProperty('--font-ui', UI_FONT)
   root.style.setProperty('--font-editor', face.css)
   root.style.setProperty('--text-editor', size.editor)
   root.style.setProperty('--text-body', size.body)

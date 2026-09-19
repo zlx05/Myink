@@ -12,9 +12,9 @@
 
   /* 文字 */
   --ink: #3f3a36;
-  --ink-muted: #77716b;
-  --ink-subtle: #9c958d;
-  --ink-faint: #b7afa6;
+  --ink-muted: #625d58;
+  --ink-subtle: #706962;
+  --ink-faint: #78716a;
 
   /* 强调（单一 accent） */
   --accent: #9fd8ad;
@@ -50,10 +50,10 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* 字体栈：UI Geist/Inter/sans 兜底；长文编辑器用系统衬线（中文宋体） */
-  --font-ui: 'Geist', 'Inter', -apple-system, 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', sans-serif;
-  --font-editor: Georgia, 'Songti SC', 'SimSun', 'Noto Serif SC', serif;
+  /* 界面与正文独立；低 DPI 下优先使用有良好屏幕 hinting 的系统字体。 */
+  --font-ui: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+  --font-editor: 'Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'Heiti SC', sans-serif;
 
   /* 排版 */
   --text-body: 14px;
@@ -97,8 +97,8 @@ html[data-theme='night'] {
   --line-strong: #454545;
   --ink: #e6e6e6;
   --ink-muted: #a3a3a3;
-  --ink-subtle: #7a7a7a;
-  --ink-faint: #5c5c5c;
+  --ink-subtle: #a0a0a0;
+  --ink-faint: #969696;
   --accent: #7dba90;
   --accent-hover: #6eab81;
   --accent-pressed: #5f9c72;

@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext'
 import { useTaskEvents } from '../hooks/useTaskEvents'
 import { api, ApiError } from '../lib/api'
 import { formatApiError } from '../lib/apiError'
+import { isProjectDraft, projectHref } from '../lib/projectCreation'
 import { clearActiveWrite, readActiveWrite, writeActiveWrite } from '../lib/activeWrite'
 import { liveStageNode } from '../lib/taskFlow'
 import { chapterToOpenForPendingTask, latestActiveGenerationTask, latestChapterAwaitingReview, latestGenerationTask, nodesForChapter, runsForChapter } from '../lib/taskChapter'
@@ -24,7 +25,8 @@ import styles from './WorkspacePage.module.css'
 
 export default function WorkspacePage() {
   const { projectId = '' } = useParams()
-  const { logout } = useAuth()
+  const { logout, session } = useAuth()
+  const accountId = session?.userId ?? ''
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -116,8 +118,12 @@ export default function WorkspacePage() {
   }, [candidates])
 
   const loadProjects = useCallback(() => {
-    api.listProjects().then(setProjects).catch(() => setProjects([]))
-  }, [])
+    api.listProjects().then((list) => {
+      setProjects(list)
+      const current = list.find((project) => project.id === projectIdRef.current)
+      if (current && isProjectDraft(current)) navigate(projectHref(current), { replace: true })
+    }).catch(() => setProjects([]))
+  }, [navigate])
 
   const loadChapters = useCallback(async () => {
     const pid = projectId
@@ -161,7 +167,7 @@ export default function WorkspacePage() {
     setError(null)
     loadProjects()
     const pid = projectId
-    const saved = readActiveWrite(pid)
+    const saved = readActiveWrite(accountId, pid)
     if (saved) {
       // worker 接手前库里还没有 Task/章节。切回来必须先用本页记下的 taskId 接 SSE。
       const optimisticId = `pending-chapter:${saved.taskId}:${saved.chapterSeq}`
@@ -263,7 +269,7 @@ export default function WorkspacePage() {
     return () => {
       chapterMaterializeVersion.current += 1
     }
-  }, [loadProjects, loadChapters, loadCandidates, loadCandidateReferences, projectId])
+  }, [accountId, loadProjects, loadChapters, loadCandidates, loadCandidateReferences, projectId])
 
   // 跨页深链（审计视图「跳章」→ /projects/:pid?chapter=<seq>）：一次性选中目标章并清参数
   useEffect(() => {
@@ -286,7 +292,7 @@ export default function WorkspacePage() {
       latestWriteArtifactRef.current = null
       pendingAutoOpen.current = { taskId, chapterSeq: chapterSeq ?? null }
       if (chapterSeq !== undefined) {
-        writeActiveWrite(projectId, { taskId, chapterSeq, batchTotal: total ?? null })
+        writeActiveWrite(accountId, projectId, { taskId, chapterSeq, batchTotal: total ?? null })
       }
       // 单章任务带出对应章（右栏按章过滤）；批次任务不带（按 :ch{seq} 子线程切）
       setActiveChapterSeq(chapterSeq ?? null)
@@ -335,7 +341,7 @@ export default function WorkspacePage() {
         }
       })()
     },
-    [chapters, projectId],
+    [accountId, chapters, projectId],
   )
 
   // 放行本章：resume 同一 task_id 续跑（§6.11 确认流收尾）。taskId 不变但 SSE 已关流，
@@ -393,11 +399,11 @@ export default function WorkspacePage() {
       if (task.status === 'awaiting_review' && activeTaskId && activeChapterSeq) {
         setReleaseTarget({ taskId: activeTaskId, chapterSeq: activeChapterSeq, batchSize: batchTotal ?? undefined })
       } else if (task.status === 'done' || task.status === 'failed' || task.status === 'cancelled') {
-        clearActiveWrite(projectId)
+        clearActiveWrite(accountId, projectId)
         setReleaseTarget(null)
       }
     }
-  }, [taskPhase, task.status, loadChapters, loadCandidates, activeTaskId, activeChapterSeq, batchTotal, projectId])
+  }, [taskPhase, task.status, loadChapters, loadCandidates, activeTaskId, activeChapterSeq, batchTotal, accountId, projectId])
 
   // 单章完成或转人工后只自动打开一次刚生成的章。历史任务重载同样是 terminal，若不以
   // pendingAutoOpen 限定，用户从第 17 章点到其他章节时会立刻被旧终态 effect 拉回。
@@ -447,7 +453,7 @@ export default function WorkspacePage() {
 
   // 每章只呈现一份状态流转：选章后加载覆盖该章的最新生成任务，实时和历史共用一条流程。
   useEffect(() => {
-    const saved = readActiveWrite(projectId)
+    const saved = readActiveWrite(accountId, projectId)
     const pending = pendingAutoOpen.current
     const remembered = pending?.taskId
       ? {
@@ -484,7 +490,7 @@ export default function WorkspacePage() {
         if (cancelled || requestVersion !== taskStartVersion.current) return
         const latest = latestGenerationTask(tasks)
         if (!latest) {
-          const keep = readActiveWrite(projectId)
+          const keep = readActiveWrite(accountId, projectId)
           if (keep && keep.chapterSeq === selectedSeq) {
             activeTaskIdRef.current = keep.taskId
             setActiveTaskId(keep.taskId)
@@ -508,7 +514,7 @@ export default function WorkspacePage() {
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [projectId, selectedSeq])
+  }, [accountId, projectId, selectedSeq])
   const taskRuns = runsForChapter(task.runs, {
     taskId: activeTaskId,
     batch: batchTotal !== null,
